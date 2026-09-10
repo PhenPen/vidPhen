@@ -1,19 +1,19 @@
 import subprocess
 
+from contentSelect.quality import get_format, show_menu
 from contentSelect.validators import is_valid_format_id
 
 # To show video
 def video(url):
-    while True: 
-        videoFormatInput = input("Download best quality format(B), select personally(S) or audio-only mp3(A) : ").upper()
-        if videoFormatInput == "B" :
-            return "best"
-        elif videoFormatInput == "S" :
+    show_menu()
+    while True:
+        choice = input("Pick 1-11 : ").strip()
+        if choice == "11":
             return videoFormat(url)
-        elif videoFormatInput == "A" :
-            return "bestaudio"
-        else:
-            print("Invalid Selection. Try again")
+        fmt = get_format(choice)
+        if fmt:
+            return fmt
+        print("Invalid Selection. Try again")
 
 # To select video format
 def videoFormat(url) :
