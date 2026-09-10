@@ -50,27 +50,54 @@ def _confirm_preview(url):
             print("Invalid Selection. Try again")
 
 
-def main():
-    # Video or Playlist selection
-    print("Enter V for Video and P for Playlist")
+def _ask_another():
+    """Return True to go again, False to exit."""
     while True:
-        content = input("Download Video or Playlist : ").upper()
+        try:
+            choice = input("Download another? (y/n) : ").upper()
+        except KeyboardInterrupt:
+            print("\nProcess Interrupted by User. Exiting...")
+            return False
+        if choice == "Y":
+            return True
+        elif choice == "N":
+            print("Bye!")
+            return False
+        else:
+            print("Invalid Selection. Try again")
+
+
+def main():
+    # Video or Playlist selection, loop until user quits
+    while True:
+        print("Enter V for Video and P for Playlist")
+        try:
+            content = input("Download Video or Playlist (or Q to quit) : ").upper()
+        except KeyboardInterrupt:
+            print("\nProcess Interrupted by User. Exiting...")
+            return
+        if content == "Q":
+            print("Bye!")
+            return
         if content == "V":
             url = _prompt_url("Enter Youtube Video URL : ")
             if url is None:
                 return
             if not _confirm_preview(url):
-                break
+                if not _ask_another():
+                    return
+                continue
             ID = video.video(url)
             downloaderVideo.downloader(ID,url)
             subsVideo.subs(url)
-            break
         elif content == "P":
             url = _prompt_url("Enter Youtube Playlist URL : ")
             if url is None:
                 return
             if not _confirm_preview(url):
-                break
+                if not _ask_another():
+                    return
+                continue
             ID = playlist.playlist(url)
             downloaderPlaylist.downloader(ID,url)
             try:
@@ -81,9 +108,11 @@ def main():
                     subsVideo.subs(url)
             except ImportError:
                 subsVideo.subs(url)
-            break
         else:
             print("Not a valid content selection. Try Again")
+            continue
+        if not _ask_another():
+            return
 
 
 if __name__ == "__main__":
