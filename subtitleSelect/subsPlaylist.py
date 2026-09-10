@@ -1,7 +1,9 @@
 import subprocess
 
 from configSelect.config import default_location
+from contentSelect.validators import parse_items
 from downloadSelect.runner import build_playlist_template
+from subtitleSelect.sub_langs import lang_args_for_choice, show_lang_menu
 
 
 def _download_template():
@@ -12,9 +14,12 @@ def _download_template():
 def _playlist_items_args():
     choice = input("Subtitles for Entire playlist (E) or specific items (S) : ").upper()
     if choice == "S":
-        items = input("Enter playlist items eg 1,4,6 : ").strip()
-        if items:
-            return ["--playlist-items", items]
+        raw = input("Enter playlist items eg 1,4,6 : ").strip()
+        items = parse_items(raw)
+        if items is None:
+            print("Invalid list. Use format eg 1,4,6")
+            return None
+        return ["--playlist-items", items]
     return []
 
 
@@ -33,35 +38,26 @@ def subs(url):
 
 
 def subs_lang_select(url):
-    print()
-    print("Do you want default subs or another language")
+    show_lang_menu()
     while True:
-        sel = input("Enter D for default subs and A for another language : ").upper()
-        if sel == "D":
-            try:
-                result = subprocess.run(
-                    ['yt-dlp', '--write-subs', '--skip-download', '--ignore-errors',
-                     '-o', _download_template()] + _playlist_items_args() + [url])
-                if result.returncode != 0:
-                    print("Subtitle download failed")
-            except FileNotFoundError:
-                print("yt-dlp command not found. Install it with: pip install yt-dlp")
-            break
-        elif sel == "A":
-            try:
-                subprocess.run(["yt-dlp", "--list-subs", url])
-            except FileNotFoundError:
-                print("yt-dlp command not found. Install it with: pip install yt-dlp")
-                break
-            lang = input("Enter language from options above in format eg en,fr,es,..").strip()
-            try:
-                result = subprocess.run(
-                    ["yt-dlp", "--write-subs", "--skip-download", "--sub-langs", lang,
-                     '--ignore-errors', "-o", _download_template()] + _playlist_items_args() + [url])
-                if result.returncode != 0:
-                    print("Subtitle download failed")
-            except FileNotFoundError:
-                print("yt-dlp command not found. Install it with: pip install yt-dlp")
-            break
+        sel = input("Pick 1-6 : ").strip()
+        if sel == "6":
+            lang = input("Enter language code eg en,fr,es : ").strip()
+            lang_args = lang_args_for_choice("6", lang)
         else:
-            print("Invalid Selection.Try again")
+            lang_args = lang_args_for_choice(sel)
+        if lang_args is None:
+            print("Invalid Selection. Try again")
+            continue
+        items_args = _playlist_items_args()
+        if items_args is None:
+            continue
+        try:
+            result = subprocess.run(
+                ['yt-dlp', '--write-subs', '--skip-download', '--ignore-errors']
+                + lang_args + ['-o', _download_template()] + items_args + [url])
+            if result.returncode != 0:
+                print("Subtitle download failed. Videos may have no subtitles.")
+        except FileNotFoundError:
+            print("yt-dlp command not found. Install it with: pip install yt-dlp")
+        break
