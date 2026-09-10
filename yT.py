@@ -1,6 +1,7 @@
 from contentSelect import video,playlist
 from contentSelect.validators import is_valid_url
 from downloadSelect import downloaderVideo,downloaderPlaylist
+from metaDataSelect.metaData import fetch
 from subtitleSelect import subsVideo
 
 
@@ -18,6 +19,33 @@ def _prompt_url(prompt):
 
 
 
+def _confirm_preview(url):
+    """Show title/channel/length and ask to proceed. Returns True to continue."""
+    try:
+        info = fetch(url)
+    except Exception:
+        info = None
+    if not info:
+        print("Could not preview this link. Proceed anyway?")
+        while True:
+            choice = input("Continue? (y/n) : ").upper()
+            if choice == "Y":
+                return True
+            elif choice == "N":
+                return False
+            else:
+                print("Invalid Selection. Try again")
+    while True:
+        choice = input("Download this? (y/n) : ").upper()
+        if choice == "Y":
+            return True
+        elif choice == "N":
+            print("Cancelled.")
+            return False
+        else:
+            print("Invalid Selection. Try again")
+
+
 def main():
     # Video or Playlist selection
     print("Enter V for Video and P for Playlist")
@@ -27,6 +55,8 @@ def main():
             url = _prompt_url("Enter Youtube Video URL : ")
             if url is None:
                 return
+            if not _confirm_preview(url):
+                break
             ID = video.video(url)
             downloaderVideo.downloader(ID,url)
             subsVideo.subs(url)
@@ -35,6 +65,8 @@ def main():
             url = _prompt_url("Enter Youtube Playlist URL : ")
             if url is None:
                 return
+            if not _confirm_preview(url):
+                break
             ID = playlist.playlist(url)
             downloaderPlaylist.downloader(ID,url)
             try:
@@ -49,8 +81,6 @@ def main():
         else:
             print("Not a valid content selection. Try Again")
 
-
-    #os.system(f'yt-dlp -F "{url}"') #Could have used os.system here but subprocess seems better
 
 if __name__ == "__main__":
     main()
