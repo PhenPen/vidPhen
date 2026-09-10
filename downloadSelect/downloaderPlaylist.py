@@ -1,3 +1,4 @@
+from contentSelect.validators import parse_range
 from downloadSelect.runner import ask_base_dir, build_playlist_template, run_yt_dlp
 
 def _download_with_template(ID, url, extra_args):
@@ -22,8 +23,12 @@ def downloader(ID,url) :
         elif playlistIndexConfirmation == "R" :
             print("Range format = Beginning Video Range - Ending Video Range")
             playlistRange = input("Enter the range of video index you want in the Range format eg 2-19 :  ")
-            playlistIndexBegin,playlistIndexEnd = playlistRange.split("-")
-            _download_with_template(ID, url, ["--ignore-errors", "--playlist-start", playlistIndexBegin.strip(), "--playlist-end", playlistIndexEnd.strip(), "--no-overwrites", "--windows-filenames"])
+            parsed = parse_range(playlistRange)
+            if parsed is None:
+                print("Invalid range. Use format eg 2-19")
+                break
+            playlistIndexBegin,playlistIndexEnd = parsed
+            _download_with_template(ID, url, ["--ignore-errors", "--playlist-start", str(playlistIndexBegin), "--playlist-end", str(playlistIndexEnd), "--no-overwrites", "--windows-filenames"])
             break
 
         elif playlistIndexConfirmation == "S" :

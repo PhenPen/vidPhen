@@ -1,6 +1,20 @@
 from contentSelect import video,playlist
+from contentSelect.validators import is_valid_url
 from downloadSelect import downloaderVideo,downloaderPlaylist
 from subtitleSelect import subsVideo
+
+
+
+def _prompt_url(prompt):
+    while True:
+        try:
+            url = input(prompt).strip()
+        except KeyboardInterrupt:
+            print("\nProcess Interrupted by User. Exiting...")
+            return None
+        if is_valid_url(url):
+            return url
+        print("Invalid YouTube URL. Try again")
 
 
 
@@ -10,25 +24,17 @@ def main():
     while True:
         content = input("Download Video or Playlist : ").upper()
         if content == "V":
-            while True:
-                try : url = input("Enter Youtube Video URL : ")
-                except KeyboardInterrupt:
-                    print("\nProcess Interrupted by User. Exiting...")
-                    return
-                else:
-                    break
+            url = _prompt_url("Enter Youtube Video URL : ")
+            if url is None:
+                return
             ID = video.video(url)
             downloaderVideo.downloader(ID,url)
             subsVideo.subs(url)
             break
         elif content == "P":
-            while True:
-                try : url = input("Enter Youtube Playlist URL : ")
-                except KeyboardInterrupt:
-                    print("\nProcess Interrupted by User. Exiting...")
-                    return
-                else:
-                    break
+            url = _prompt_url("Enter Youtube Playlist URL : ")
+            if url is None:
+                return
             ID = playlist.playlist(url)
             downloaderPlaylist.downloader(ID,url)
             try:
