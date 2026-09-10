@@ -2,7 +2,7 @@ import pathlib
 import shutil
 import subprocess
 
-from configSelect.config import default_location
+from configSelect.config import default_location, set_default_location
 
 PLAYLIST_SUBFOLDER = "%(playlist_title)s/%(playlist_index)s - %(title)s.%(ext)s"
 
@@ -32,18 +32,28 @@ def needs_ffmpeg(args):
 
 
 def ask_base_dir():
-    """Prompt Default (y/n) and return a base directory path string."""
+    """Prompt Default/Custom/Change-default and return a base directory path string."""
+    try:
+        from configSelect.config import _load_config
+        current = _load_config()
+    except Exception:
+        current = None
+    if current:
+        print(f"Saved folder: {current}")
     while True:
-        choice = input("Download to Default Location (y/n) : ").upper()
-        if choice == "Y":
+        choice = input("Save to Default (D), Custom once (C), Change default (S)? : ").upper()
+        if choice in ("D", "Y"):
             return default_location()
-        elif choice == "N":
+        elif choice in ("C", "N"):
             raw = input("Enter file location eg C:/Users/... : ").strip().strip('"')
             path = pathlib.Path(raw).expanduser()
             path.mkdir(parents=True, exist_ok=True)
             return str(path)
+        elif choice == "S":
+            raw = input("Enter new default folder : ").strip().strip('"')
+            return set_default_location(raw)
         else:
-            print("Invalid Selection.Try again")
+            print("Invalid Selection. Try again")
 
 
 def build_video_template(base_dir):
