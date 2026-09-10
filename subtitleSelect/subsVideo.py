@@ -1,9 +1,10 @@
 import os
 from configSelect.config import default_location
 
-#Still working on this 
-# Download location for subtitles
-download_template = f'{default_location()}/%(title)s.%(ext)s'
+
+def _download_template():
+    # Lazy-load so importing this module never prompts for input.
+    return f'{default_location()}/%(title)s.%(ext)s'
 
 def subs(url) :
     while True:
@@ -25,12 +26,12 @@ def subs_Lang_Select(url) :
     while True :
         subs_selection = input("Enter D for default subs and A for another language : ").upper()
         if subs_selection == "D" :
-            os.system(f'yt-dlp --write-subs --skip-download -o {download_template} {url}')
+            os.system(f'yt-dlp --write-subs --skip-download -o {_download_template()} {url}')
             break
         elif subs_selection == "A" :
             os.system(f"yt-dlp --list-subs {url}")
             lang = input("Enter language from options above in format eg en,fr,es,..")
-            os.system(f"yt-dlp --write-subs --skip-download --sub-langs {lang} -o {download_template} {url}")
+            os.system(f"yt-dlp --write-subs --skip-download --sub-langs {lang} -o {_download_template()} {url}")
             break
         else :
             print("Invalid Selection.Try again")
