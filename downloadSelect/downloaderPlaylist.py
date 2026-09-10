@@ -1,4 +1,4 @@
-import os,subprocess,pathlib
+import subprocess,pathlib
 from configSelect.config import default_location
 
 def downloader(ID,url) :
@@ -21,13 +21,13 @@ def downloader(ID,url) :
                 if download_location == "Y" :
                     downloadPath = default_location()
                     download_template = f'{downloadPath}{playlistSubFolder}'
-                    result = subprocess.run(['yt-dlp' ,'-f', ID, "-o", download_template, "--ignore-errors", "--playlist-start", "1", "--playlist-end", "99999", "--no-overwrites", "--windows-filenames", url] ,text=True)
+                    result = subprocess.run(['yt-dlp' ,'-f', ID, "-o", download_template, "--ignore-errors", "--playlist-start", "1", "--playlist-end", "99999", "--no-overwrites", "--windows-filenames", url] ,text=True, capture_output=True)
                     break
                 elif download_location == "N" : 
-                    downloadPath = pathlib.Path(input("Enter file location eg C:/Users/... : "))
+                    downloadPath = pathlib.Path(input("Enter file location eg C:/Users/... : ").strip().strip('"')).expanduser()
                     downloadPath.mkdir(parents=True, exist_ok=True)
                     download_template = f'{downloadPath}/{playlistSubFolder}'
-                    result = subprocess.run(["yt-dlp", "-f", ID, "-o", download_template, "--ignore-errors", "--playlist-start", "1", "--playlist-end", "99999", "--no-overwrites", "--windows-filenames", url],text=True)
+                    result = subprocess.run(["yt-dlp", "-f", ID, "-o", download_template, "--ignore-errors", "--playlist-start", "1", "--playlist-end", "99999", "--no-overwrites", "--windows-filenames", url],text=True, capture_output=True)
                     break 
                 else: print("Invalid Selection.Try again")
 
@@ -37,6 +37,7 @@ def downloader(ID,url) :
             else:
                 print("Download failed")
                 print(result.stderr)
+            break
 
         elif playlistIndexConfirmation == "R" :
             print("Range format = Beginning Video Range - Ending Video Range")
@@ -50,13 +51,13 @@ def downloader(ID,url) :
                     downloadPath = default_location()
                     download_template = f'{downloadPath}{playlistSubFolder}'
                     
-                    result = subprocess.run(['yt-dlp' ,'-f', ID, "-o", download_template, "--ignore-errors", "--playlist-start", playlistIndexBegin, "--playlist-end", playlistIndexEnd, "--no-overwrites", "--windows-filenames", url] ,text=True)
+                    result = subprocess.run(['yt-dlp' ,'-f', ID, "-o", download_template, "--ignore-errors", "--playlist-start", playlistIndexBegin, "--playlist-end", playlistIndexEnd, "--no-overwrites", "--windows-filenames", url] ,text=True, capture_output=True)
                     break
                 elif download_location == "N" : 
-                    downloadPath = pathlib.Path(input("Enter file location eg C:/Users/... : "))
+                    downloadPath = pathlib.Path(input("Enter file location eg C:/Users/... : ").strip().strip('"')).expanduser()
                     downloadPath.mkdir(parents=True, exist_ok=True)
                     download_template = f'{downloadPath}/{playlistSubFolder}'
-                    result = subprocess.run(["yt-dlp", "-f", ID, "-o", download_template, "--ignore-errors", "--playlist-start", playlistIndexBegin, "--playlist-end", playlistIndexEnd, "--no-overwrites", "--windows-filenames", url],text=True)
+                    result = subprocess.run(["yt-dlp", "-f", ID, "-o", download_template, "--ignore-errors", "--playlist-start", playlistIndexBegin, "--playlist-end", playlistIndexEnd, "--no-overwrites", "--windows-filenames", url],text=True, capture_output=True)
                     break 
                 else: print("Invalid Selection.Try again")
 
@@ -66,6 +67,7 @@ def downloader(ID,url) :
             else:
                 print("Download failed")
                 print(result.stderr)
+            break
 
         elif playlistIndexConfirmation == "S" :
             print("Specifics format = 1,4,6,7,9")
@@ -79,13 +81,13 @@ def downloader(ID,url) :
                     downloadPath = default_location()
                     download_template = f'{downloadPath}{playlistSubFolder}'
                     
-                    result = subprocess.run(['yt-dlp' ,'-f', ID, "-o", download_template, "--ignore-errors", "--playlist-items", playlistIndexSpecifics, "--no-overwrites", "--windows-filenames", url] ,text=True)
+                    result = subprocess.run(['yt-dlp' ,'-f', ID, "-o", download_template, "--ignore-errors", "--playlist-items", playlistIndexSpecifics, "--no-overwrites", "--windows-filenames", url] ,text=True, capture_output=True)
                     break
                 elif download_location == "N" : 
-                    downloadPath = pathlib.Path(input("Enter file location eg C:/Users/... : "))
+                    downloadPath = pathlib.Path(input("Enter file location eg C:/Users/... : ").strip().strip('"')).expanduser()
                     downloadPath.mkdir(parents=True, exist_ok=True)
                     download_template = f'{downloadPath}/{playlistSubFolder}'
-                    result = subprocess.run(["yt-dlp", "-f", ID, "-o", download_template, "--ignore-errors", "--playlist-start", playlistIndexSpecifics, "--no-overwrites", "--windows-filenames", url],text=True)
+                    result = subprocess.run(["yt-dlp", "-f", ID, "-o", download_template, "--ignore-errors", "--playlist-items", playlistIndexSpecifics, "--no-overwrites", "--windows-filenames", url],text=True, capture_output=True)
                     break 
                 else: print("Invalid Selection.Try again")
 
@@ -95,3 +97,7 @@ def downloader(ID,url) :
             else:
                 print("Download failed")
                 print(result.stderr)
+            break
+        else:
+            print("Invalid selection. Try again")
+            break
