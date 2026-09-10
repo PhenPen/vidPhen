@@ -5,11 +5,13 @@ from contentSelect.validators import is_valid_format_id
 # To show video
 def video(url):
     while True: 
-        videoFormatInput = input("Download best quality format(B) or select for format personally(S) : ").upper()
+        videoFormatInput = input("Download best quality format(B), select personally(S) or audio-only mp3(A) : ").upper()
         if videoFormatInput == "B" :
             return "best"
         elif videoFormatInput == "S" :
             return videoFormat(url)
+        elif videoFormatInput == "A" :
+            return "bestaudio"
         else:
             print("Invalid Selection. Try again")
 
