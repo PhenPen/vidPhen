@@ -1,4 +1,4 @@
-from contentSelect.validators import parse_range
+from contentSelect.validators import parse_items, parse_range
 from downloadSelect.runner import ask_base_dir, build_playlist_template, run_yt_dlp
 
 def _download_with_template(ID, url, extra_args):
@@ -37,8 +37,12 @@ def downloader(ID,url) :
         elif playlistIndexConfirmation == "S" :
             print("Specifics format = 1,4,6,7,9")
             print("If I want to download 5 videos with index 1,4,6,7,9, I would enter it as shown above")
-            playlistIndexSpecifics = input("Enter all the index of all videos in the Specifics format eg 2,3,4,5,... :  ")
-            _download_with_template(ID, url, ["--ignore-errors", "--playlist-items", playlistIndexSpecifics.strip(), "--no-overwrites", "--windows-filenames"])
+            raw_items = input("Enter all the index of all videos in the Specifics format eg 2,3,4,5,... :  ")
+            playlistIndexSpecifics = parse_items(raw_items)
+            if playlistIndexSpecifics is None:
+                print("Invalid list. Use format eg 1,4,6 with numbers only")
+                break
+            _download_with_template(ID, url, ["--ignore-errors", "--playlist-items", playlistIndexSpecifics, "--no-overwrites", "--windows-filenames"])
             break
         else:
             print("Invalid selection. Try again")

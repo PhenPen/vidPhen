@@ -26,6 +26,23 @@ def is_valid_format_id(format_id):
     return bool(_FORMAT_RE.match(fid))
 
 
+def parse_items(items_str):
+    """Parse '1,4,6' -> '1,4,6' normalized. Returns None if invalid."""
+    if not items_str or not isinstance(items_str, str):
+        return None
+    parts = [p.strip() for p in items_str.split(",")]
+    if not parts:
+        return None
+    cleaned = []
+    for p in parts:
+        if not p.isdigit() or int(p) < 1:
+            return None
+        cleaned.append(str(int(p)))
+    if not cleaned:
+        return None
+    return ",".join(cleaned)
+
+
 def parse_range(range_str):
     """Parse '2-19' -> (2, 19). Returns None if invalid."""
     if not range_str or "-" not in range_str:
