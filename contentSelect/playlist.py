@@ -1,18 +1,20 @@
 import subprocess
 
+from contentSelect.quality import get_format, show_menu
 from contentSelect.validators import is_valid_format_id
 
 # To show playlist
 def playlist(url) :
+    print("Quality applies to all videos in the playlist.")
+    show_menu()
     while True:
-        playlistFormatInput = input("Download best quality for all playlist videos(B) or select format personally(S) : ").upper()
-
-        if playlistFormatInput == "B":
-            return "bv*+ba/b" # Best video and best audio stream, if it falls, /b means use best combined file as fallback
-        elif playlistFormatInput == "S" :
+        choice = input("Pick 1-11 : ").strip()
+        if choice == "11":
             return playlistFormat(url)
-        else:
-            print("Invalid selection. Try again")
+        fmt = get_format(choice)
+        if fmt:
+            return fmt
+        print("Invalid selection. Try again")
 
 
 # To select playlist video format
