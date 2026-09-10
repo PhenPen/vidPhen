@@ -2,7 +2,7 @@ from contentSelect import video,playlist
 from contentSelect.validators import is_valid_url
 from downloadSelect import downloaderVideo,downloaderPlaylist
 from metaDataSelect.metaData import fetch
-from subtitleSelect import subsVideo
+from subtitleSelect.sub_langs import plan_subs
 
 
 
@@ -94,8 +94,8 @@ def main():
                     return
                 continue
             ID = video.video(url)
-            downloaderVideo.downloader(ID,url)
-            subsVideo.subs(url)
+            sub_mode, sub_args = plan_subs()
+            downloaderVideo.downloader(ID, url, sub_mode=sub_mode, sub_args=sub_args)
         elif content == "P":
             url = _prompt_url("Enter Youtube Playlist URL : ")
             if url is None:
@@ -105,15 +105,8 @@ def main():
                     return
                 continue
             ID = playlist.playlist(url)
-            downloaderPlaylist.downloader(ID,url)
-            try:
-                from subtitleSelect import subsPlaylist
-                if hasattr(subsPlaylist, "subs"):
-                    subsPlaylist.subs(url)
-                else:
-                    subsVideo.subs(url)
-            except ImportError:
-                subsVideo.subs(url)
+            sub_mode, sub_args = plan_subs()
+            downloaderPlaylist.downloader(ID, url, sub_mode=sub_mode, sub_args=sub_args)
         else:
             print("Not a valid content selection. Try Again")
             continue
