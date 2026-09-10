@@ -3,8 +3,9 @@ import subprocess
 from contentSelect.quality import get_format, show_menu
 from contentSelect.validators import is_valid_format_id
 
-# To show video
+# To show video - returns (format_id, extra_args)
 def video(url):
+    from contentSelect.quality import ask_audio_type
     show_menu()
     while True:
         choice = input("Pick 1-11 : ").strip()
@@ -12,12 +13,14 @@ def video(url):
             fmt = videoFormat(url)
             from contentSelect.ui import close_section
             close_section()
-            return fmt
+            return (fmt, ["--extract-audio", "--audio-format", "mp3"] if fmt == "bestaudio" else [])
+        if choice == "9":
+            return ask_audio_type()
         fmt = get_format(choice)
         if fmt:
             from contentSelect.ui import close_section
             close_section()
-            return fmt
+            return (fmt, ["--extract-audio", "--audio-format", "mp3"] if fmt == "bestaudio" else [])
         print("Invalid Selection. Try again")
 
 # To select video format

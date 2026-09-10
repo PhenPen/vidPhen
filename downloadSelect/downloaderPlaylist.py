@@ -1,13 +1,15 @@
 from contentSelect.validators import parse_items, parse_range
 from downloadSelect.runner import ask_base_dir, build_playlist_template, run_yt_dlp
 
-def _download_with_template(ID, url, extra_args):
+def _download_with_template(ID, url, extra_args, audio_extra=None):
     base_dir = ask_base_dir()
     download_template = build_playlist_template(base_dir)
-    if ID == "bestaudio":
-        run_yt_dlp(['-f', 'bestaudio', '--extract-audio', '--audio-format', 'mp3', "-o", download_template] + extra_args + [url])
-    else:
-        run_yt_dlp(['-f', ID, "-o", download_template] + extra_args + [url])
+    if isinstance(ID, tuple):
+        ID, audio_extra = ID[0], list(ID[1] or [])
+    audio_extra = list(audio_extra or [])
+    if ID == "bestaudio" and not audio_extra:
+        audio_extra = ["--extract-audio", "--audio-format", "mp3"]
+    run_yt_dlp(['-f', ID, "-o", download_template] + audio_extra + extra_args + [url])
 
 
 def downloader(ID,url) :
