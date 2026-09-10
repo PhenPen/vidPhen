@@ -20,9 +20,13 @@ def _prompt_url(prompt):
 
 
 def _confirm_preview(url):
-    """Show title/channel/length and ask to proceed. Returns True to continue."""
+    """Show title/channel/length (or playlist count) and ask to proceed."""
     try:
-        info = fetch(url)
+        if "list=" in url:
+            from metaDataSelect.metaData import fetch_playlist
+            info = fetch_playlist(url)
+        else:
+            info = fetch(url)
     except Exception:
         info = None
     if not info:

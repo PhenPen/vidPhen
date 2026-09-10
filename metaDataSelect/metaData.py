@@ -29,3 +29,30 @@ def fetch(url):
     print(f"Uploader: {info['uploader']}")
     print(f"Duration: {info['duration']}s")
     return info
+
+
+def fetch_playlist(url):
+    """Return {title, count, url} for playlists. No download. None on failure."""
+    try:
+        title_res = subprocess.run(
+            ['yt-dlp', '--skip-download', '--flat-playlist', '--print',
+             '%(playlist_title)s', '--playlist-items', '1', url],
+            capture_output=True, text=True)
+        list_res = subprocess.run(
+            ['yt-dlp', '--skip-download', '--flat-playlist', '--print',
+             '%(title)s', url],
+            capture_output=True, text=True)
+    except FileNotFoundError:
+        print("yt-dlp command not found. Install it with: pip install yt-dlp")
+        return None
+    if list_res.returncode != 0:
+        return None
+    videos = [l for l in (list_res.stdout or "").splitlines()
+              if l.strip() and not l.strip().startswith("[")]
+    title_lines = [l for l in (title_res.stdout or "").splitlines()
+                   if l.strip() and not l.strip().startswith("[")]
+    title = title_lines[0].strip() if title_lines else "Playlist"
+    info = {"title": title, "count": len(videos), "url": url}
+    print(f"Playlist: {info['title']}")
+    print(f"Videos: {info['count']}")
+    return info
