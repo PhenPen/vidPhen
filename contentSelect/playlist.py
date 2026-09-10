@@ -1,4 +1,4 @@
-import os
+import subprocess
 
 # To show playlist
 def playlist(url) :
@@ -15,7 +15,11 @@ def playlist(url) :
 
 # To select playlist video format
 def playlistFormat(url) :
-    os.system(f'yt-dlp -F "{url}"')
+    try:
+        subprocess.run(['yt-dlp', '-F', url])
+    except FileNotFoundError:
+        print("yt-dlp command not found. Install it with: pip install yt-dlp")
+        return "bv*+ba/b"
 
     print()
     print("Download video and audio file together for a video in playlist or a single file")

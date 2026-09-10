@@ -1,4 +1,4 @@
-import os
+import subprocess
 
 # To show video
 def video(url):
@@ -13,7 +13,11 @@ def video(url):
 
 # To select video format
 def videoFormat(url) :
-    os.system(f'yt-dlp -F "{url}"')
+    try:
+        subprocess.run(['yt-dlp', '-F', url])
+    except FileNotFoundError:
+        print("yt-dlp command not found. Install it with: pip install yt-dlp")
+        return "best"
 
     print()
     print("Download either a video and audio file together or a single file")
