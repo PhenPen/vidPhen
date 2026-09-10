@@ -5,14 +5,18 @@ from contentSelect.validators import is_valid_format_id
 
 # To show playlist
 def playlist(url) :
+    from contentSelect.ui import close_section
     print("Quality applies to all videos in the playlist.")
     show_menu()
     while True:
         choice = input("Pick 1-11 : ").strip()
         if choice == "11":
-            return playlistFormat(url)
+            fmt = playlistFormat(url)
+            close_section()
+            return fmt
         fmt = get_format(choice)
         if fmt:
+            close_section()
             return fmt
         print("Invalid selection. Try again")
 

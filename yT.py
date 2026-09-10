@@ -21,6 +21,8 @@ def _prompt_url(prompt):
 
 def _confirm_preview(url):
     """Show title/channel/length (or playlist count) and ask to proceed."""
+    from contentSelect.ui import close_section, open_section
+    open_section()
     try:
         if "list=" in url:
             from metaDataSelect.metaData import fetch_playlist
@@ -34,17 +36,21 @@ def _confirm_preview(url):
         while True:
             choice = input("Continue? (y/n) : ").upper()
             if choice == "Y":
+                close_section()
                 return True
             elif choice == "N":
+                close_section()
                 return False
             else:
                 print("Invalid Selection. Try again")
     while True:
         choice = input("Download this? (y/n) : ").upper()
         if choice == "Y":
+            close_section()
             return True
         elif choice == "N":
             print("Cancelled.")
+            close_section()
             return False
         else:
             print("Invalid Selection. Try again")

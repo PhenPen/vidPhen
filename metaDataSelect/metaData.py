@@ -2,6 +2,23 @@
 import subprocess
 
 
+def format_duration(raw):
+    """Convert seconds (eg '658') to '10m 58s'. Hours when needed."""
+    try:
+        total = int(float(str(raw).strip()))
+    except (TypeError, ValueError):
+        return "unknown"
+    if total < 0:
+        return "unknown"
+    h, rem = divmod(total, 3600)
+    m, s = divmod(rem, 60)
+    if h:
+        return f"{h}h {m}m {s}s"
+    if m:
+        return f"{m}m {s}s"
+    return f"{s}s"
+
+
 def fetch(url):
     """Return {title, uploader, duration, url} or None. No download."""
     try:
@@ -27,7 +44,7 @@ def fetch(url):
     }
     print(f"Title: {info['title']}")
     print(f"Uploader: {info['uploader']}")
-    print(f"Duration: {info['duration']}s")
+    print(f"Duration: {format_duration(info['duration'])}")
     return info
 
 

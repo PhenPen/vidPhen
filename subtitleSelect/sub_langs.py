@@ -12,6 +12,8 @@ _LANGS = {c: (label, code) for c, label, code in OPTIONS}
 
 
 def show_lang_menu():
+    from contentSelect.ui import open_section
+    open_section()
     print("Which subtitles?")
     for choice, label, code in OPTIONS:
         suffix = "" if code is None else f" ({code})"

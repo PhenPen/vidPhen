@@ -9,9 +9,14 @@ def video(url):
     while True:
         choice = input("Pick 1-11 : ").strip()
         if choice == "11":
-            return videoFormat(url)
+            fmt = videoFormat(url)
+            from contentSelect.ui import close_section
+            close_section()
+            return fmt
         fmt = get_format(choice)
         if fmt:
+            from contentSelect.ui import close_section
+            close_section()
             return fmt
         print("Invalid Selection. Try again")
 

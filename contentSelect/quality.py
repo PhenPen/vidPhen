@@ -32,6 +32,8 @@ _FORMATS = {choice: fmt for choice, _, fmt in OPTIONS}
 
 
 def show_menu():
+    from contentSelect.ui import close_section, open_section
+    open_section()
     print("What quality?")
     for choice, label, _ in OPTIONS:
         print(f"{choice}) {label}")
