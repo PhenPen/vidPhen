@@ -15,6 +15,22 @@ def ensure_yt_dlp():
     return True
 
 
+def ensure_ffmpeg():
+    """Return True if ffmpeg is available, else print help and return False."""
+    if shutil.which("ffmpeg") is None:
+        print("ffmpeg not found. MP3 convert and video+audio merge need it.")
+        print("Install: winget install ffmpeg  OR  https://ffmpeg.org/download.html")
+        print("Tip: pick 1) Best or 10) Audio original which often work without convert.")
+        return False
+    return True
+
+
+def needs_ffmpeg(args):
+    """Detect merge (247+250 / bv*+ba) or --extract-audio in yt-dlp args."""
+    text = " ".join(args)
+    return ("--extract-audio" in args) or ("+" in text)
+
+
 def ask_base_dir():
     """Prompt Default (y/n) and return a base directory path string."""
     while True:
@@ -43,6 +59,9 @@ def run_yt_dlp(args):
     """Run yt-dlp with streaming output so progress is visible. Returns returncode or None."""
     if not ensure_yt_dlp():
         return None
+    if needs_ffmpeg(args) and not ensure_ffmpeg():
+        print("Stopped before download so you don't get a broken file.")
+        return None
     try:
         result = subprocess.run(['yt-dlp'] + args, text=True)
     except FileNotFoundError:
@@ -51,5 +70,9 @@ def run_yt_dlp(args):
     if result.returncode == 0:
         print("Download Completed")
     else:
-        print("Download failed")
+        print("Download failed. Common causes:")
+        print("- Private / age-restricted / login-required video")
+        print("- No internet or YouTube blocked the request (try again)")
+        print("- File already exists and --no-overwrites skipped it (check folder)")
+        print("- Picked format not available (try 1) Best)")
     return result.returncode

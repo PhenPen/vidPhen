@@ -4,7 +4,10 @@ from downloadSelect.runner import ask_base_dir, build_playlist_template, run_yt_
 def _download_with_template(ID, url, extra_args):
     base_dir = ask_base_dir()
     download_template = build_playlist_template(base_dir)
-    run_yt_dlp(['-f', ID, "-o", download_template] + extra_args + [url])
+    if ID == "bestaudio":
+        run_yt_dlp(['-f', 'bestaudio', '--extract-audio', '--audio-format', 'mp3', "-o", download_template] + extra_args + [url])
+    else:
+        run_yt_dlp(['-f', ID, "-o", download_template] + extra_args + [url])
 
 
 def downloader(ID,url) :
