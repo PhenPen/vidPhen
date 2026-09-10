@@ -1,10 +1,12 @@
-import subprocess,pathlib
-from configSelect.config import default_location
+from downloadSelect.runner import ask_base_dir, build_playlist_template, run_yt_dlp
+
+def _download_with_template(ID, url, extra_args):
+    base_dir = ask_base_dir()
+    download_template = build_playlist_template(base_dir)
+    run_yt_dlp(['-f', ID, "-o", download_template] + extra_args + [url])
+
 
 def downloader(ID,url) :
-
-    # Sub folder to store playlist videos
-    playlistSubFolder = "%(playlist_title)s/%(playlist_index)s - %(title)s.%(ext)s" # Playlist title is used as the folder name, with the index of the video in the playlist coming first and the video title and extension
 
     # Selecting index of playlist
     print("Do you want to download everything in the playlist, a particular range of videos or only specific videos")
@@ -14,89 +16,21 @@ def downloader(ID,url) :
     # Downloading based on index selection
     while True:
         if playlistIndexConfirmation == "E" :
-
-            # Download Location Selection
-            while True:
-                download_location = input("Download to Default Location (y/n) : ").upper()
-                if download_location == "Y" :
-                    downloadPath = default_location()
-                    download_template = f'{downloadPath}{playlistSubFolder}'
-                    result = subprocess.run(['yt-dlp' ,'-f', ID, "-o", download_template, "--ignore-errors", "--playlist-start", "1", "--playlist-end", "99999", "--no-overwrites", "--windows-filenames", url] ,text=True, capture_output=True)
-                    break
-                elif download_location == "N" : 
-                    downloadPath = pathlib.Path(input("Enter file location eg C:/Users/... : ").strip().strip('"')).expanduser()
-                    downloadPath.mkdir(parents=True, exist_ok=True)
-                    download_template = f'{downloadPath}/{playlistSubFolder}'
-                    result = subprocess.run(["yt-dlp", "-f", ID, "-o", download_template, "--ignore-errors", "--playlist-start", "1", "--playlist-end", "99999", "--no-overwrites", "--windows-filenames", url],text=True, capture_output=True)
-                    break 
-                else: print("Invalid Selection.Try again")
-
-            # For checking if download was successful    
-            if result.returncode == 0 :
-                print("Download Completed")
-            else:
-                print("Download failed")
-                print(result.stderr)
+            _download_with_template(ID, url, ["--ignore-errors", "--playlist-start", "1", "--playlist-end", "99999", "--no-overwrites", "--windows-filenames"])
             break
 
         elif playlistIndexConfirmation == "R" :
             print("Range format = Beginning Video Range - Ending Video Range")
             playlistRange = input("Enter the range of video index you want in the Range format eg 2-19 :  ")
             playlistIndexBegin,playlistIndexEnd = playlistRange.split("-")
-
-            # Download Location Selection
-            while True:
-                download_location = input("Download to Default Location (y/n) : ").upper()
-                if download_location == "Y" :
-                    downloadPath = default_location()
-                    download_template = f'{downloadPath}{playlistSubFolder}'
-                    
-                    result = subprocess.run(['yt-dlp' ,'-f', ID, "-o", download_template, "--ignore-errors", "--playlist-start", playlistIndexBegin, "--playlist-end", playlistIndexEnd, "--no-overwrites", "--windows-filenames", url] ,text=True, capture_output=True)
-                    break
-                elif download_location == "N" : 
-                    downloadPath = pathlib.Path(input("Enter file location eg C:/Users/... : ").strip().strip('"')).expanduser()
-                    downloadPath.mkdir(parents=True, exist_ok=True)
-                    download_template = f'{downloadPath}/{playlistSubFolder}'
-                    result = subprocess.run(["yt-dlp", "-f", ID, "-o", download_template, "--ignore-errors", "--playlist-start", playlistIndexBegin, "--playlist-end", playlistIndexEnd, "--no-overwrites", "--windows-filenames", url],text=True, capture_output=True)
-                    break 
-                else: print("Invalid Selection.Try again")
-
-            # For checking if download was successful    
-            if result.returncode == 0 :
-                print("Download Completed")
-            else:
-                print("Download failed")
-                print(result.stderr)
+            _download_with_template(ID, url, ["--ignore-errors", "--playlist-start", playlistIndexBegin.strip(), "--playlist-end", playlistIndexEnd.strip(), "--no-overwrites", "--windows-filenames"])
             break
 
         elif playlistIndexConfirmation == "S" :
             print("Specifics format = 1,4,6,7,9")
             print("If I want to download 5 videos with index 1,4,6,7,9, I would enter it as shown above")
             playlistIndexSpecifics = input("Enter all the index of all videos in the Specifics format eg 2,3,4,5,... :  ")
-
-            # Download Location Selection
-            while True:
-                download_location = input("Download to Default Location (y/n) : ").upper()
-                if download_location == "Y" :
-                    downloadPath = default_location()
-                    download_template = f'{downloadPath}{playlistSubFolder}'
-                    
-                    result = subprocess.run(['yt-dlp' ,'-f', ID, "-o", download_template, "--ignore-errors", "--playlist-items", playlistIndexSpecifics, "--no-overwrites", "--windows-filenames", url] ,text=True, capture_output=True)
-                    break
-                elif download_location == "N" : 
-                    downloadPath = pathlib.Path(input("Enter file location eg C:/Users/... : ").strip().strip('"')).expanduser()
-                    downloadPath.mkdir(parents=True, exist_ok=True)
-                    download_template = f'{downloadPath}/{playlistSubFolder}'
-                    result = subprocess.run(["yt-dlp", "-f", ID, "-o", download_template, "--ignore-errors", "--playlist-items", playlistIndexSpecifics, "--no-overwrites", "--windows-filenames", url],text=True, capture_output=True)
-                    break 
-                else: print("Invalid Selection.Try again")
-
-            # For checking if download was successful    
-            if result.returncode == 0 :
-                print("Download Completed")
-            else:
-                print("Download failed")
-                print(result.stderr)
+            _download_with_template(ID, url, ["--ignore-errors", "--playlist-items", playlistIndexSpecifics.strip(), "--no-overwrites", "--windows-filenames"])
             break
         else:
             print("Invalid selection. Try again")
