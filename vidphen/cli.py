@@ -1,5 +1,5 @@
 from vidphen.contentSelect import ui, video,playlist
-from vidphen.contentSelect.validators import parse_url_list
+from vidphen.contentSelect.validators import is_valid_url, parse_url_list
 from vidphen.downloadSelect import downloaderVideo,downloaderPlaylist
 from vidphen.downloadSelect.runner import ask_base_dir
 from vidphen.metaDataSelect.metaData import fetch, format_duration
@@ -18,6 +18,26 @@ def _prompt_url_list(prompt_text):
             break
         lines.append(line)
     return parse_url_list("\n".join(lines))
+
+
+def _ask_count(what):
+    """1) One vs 2) Multiple. Returns 'one' or 'many'."""
+    while True:
+        choice = ui.prompt(f"How many {what}? 1) One 2) Multiple : ").strip()
+        if choice == "1":
+            return "one"
+        elif choice == "2":
+            return "many"
+        print("Invalid Selection. Try again")
+
+
+def _prompt_single_url(prompt_text):
+    """Single link prompt. Returns ([url], []) like _prompt_url_list."""
+    while True:
+        url = ui.prompt(prompt_text).strip()
+        if is_valid_url(url):
+            return ([url], [])
+        print("Invalid YouTube URL. Try again")
 
 
 def _preview_batch(urls):
@@ -73,10 +93,10 @@ def main():
             print("Bye!")
             return
         if content == "V":
-            parsed = _prompt_url_list("Enter Youtube Video URLs : ")
-            if parsed is None:
-                return
-            good, bad = parsed
+            if _ask_count("videos") == "one":
+                good, bad = _prompt_single_url("Enter Youtube Video URL : ")
+            else:
+                good, bad = _prompt_url_list("Enter Youtube Video URLs : ")
             if bad:
                 print(f"Skipped {len(bad)} invalid link(s):")
                 for b in bad:
@@ -172,10 +192,10 @@ def main():
             else:
                 print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
         elif content == "P":
-            parsed = _prompt_url_list("Enter Youtube Playlist URLs : ")
-            if parsed is None:
-                return
-            good, bad = parsed
+            if _ask_count("playlists") == "one":
+                good, bad = _prompt_single_url("Enter Youtube Playlist URL : ")
+            else:
+                good, bad = _prompt_url_list("Enter Youtube Playlist URLs : ")
             if bad:
                 print(f"Skipped {len(bad)} invalid link(s):")
                 for b in bad:
