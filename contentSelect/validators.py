@@ -55,3 +55,22 @@ def parse_range(range_str):
         return (begin, end)
     except ValueError:
         return None
+
+
+def parse_url_list(text):
+    """Split pasted text on commas/whitespace/newlines. Returns (good, bad)."""
+    import re as _re
+    if not text or not isinstance(text, str):
+        return ([], [])
+    raw = [p.strip().strip('"').strip("'") for p in _re.split(r"[\s,;]+", text)]
+    raw = [p for p in raw if p]
+    good, bad, seen = [], [], set()
+    for item in raw:
+        if item in seen:
+            continue
+        seen.add(item)
+        if is_valid_url(item):
+            good.append(item)
+        else:
+            bad.append(item)
+    return (good, bad)

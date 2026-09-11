@@ -54,6 +54,42 @@ def get_format(choice):
     return _FORMATS.get(str(choice).strip())
 
 
+def picked_height(fmt):
+    """Extract height limit (eg 1080) from a preset format string. None = Best/audio."""
+    import re as _re
+    if not fmt or not isinstance(fmt, str):
+        return None
+    if fmt in ("AUDIO_ASK", "bestaudio", "bestaudio/best"):
+        return None
+    m = _re.search(r"height<=(\d+)", fmt)
+    return int(m.group(1)) if m else None
+
+
+def get_max_height(url):
+    """Best-effort max available height for a video. None if unknown."""
+    import re as _re
+    import subprocess
+    try:
+        result = subprocess.run(['yt-dlp', '-F', url], capture_output=True, text=True)
+    except FileNotFoundError:
+        return None
+    if result.returncode != 0:
+        return None
+    heights = []
+    for m in _re.finditer(r"(\d{3,4})[x×](\d{3,4})", result.stdout or ""):
+        try:
+            heights.append(int(m.group(2)))
+        except ValueError:
+            pass
+    for m in _re.finditer(r"\b(\d{3,4})p\d?\b", result.stdout or ""):
+        try:
+            heights.append(int(m.group(1)))
+        except ValueError:
+            pass
+    heights = [h for h in heights if 100 <= h <= 4320]
+    return max(heights) if heights else None
+
+
 def show_audio_menu():
     from contentSelect.ui import open_section
     open_section()
