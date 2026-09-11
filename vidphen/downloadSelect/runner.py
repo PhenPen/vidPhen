@@ -35,7 +35,7 @@ def needs_ffmpeg(args):
 def ask_base_dir():
     """Prompt Default/Custom/Change-default and return a base directory path string."""
     try:
-        from configSelect.config import _load_config
+        from vidphen.configSelect.config import _load_config
         current = _load_config()
     except Exception:
         current = None

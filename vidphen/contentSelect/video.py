@@ -5,20 +5,20 @@ from vidphen.contentSelect.validators import is_valid_format_id
 
 # To show video - returns (format_id, extra_args)
 def video(url):
-    from contentSelect.quality import ask_audio_type
+    from vidphen.contentSelect.quality import ask_audio_type
     show_menu()
     while True:
         choice = prompt("Pick 1-12 : ").strip()
         if choice == "12":
             fmt = videoFormat(url)
-            from contentSelect.ui import close_section
+            from vidphen.contentSelect.ui import close_section
             close_section()
             return (fmt, ["--extract-audio", "--audio-format", "mp3"] if fmt == "bestaudio" else [])
         if choice == "9":
             return ask_audio_type()
         fmt = get_format(choice)
         if fmt:
-            from contentSelect.ui import close_section
+            from vidphen.contentSelect.ui import close_section
             close_section()
             return (fmt, ["--extract-audio", "--audio-format", "mp3"] if fmt == "bestaudio" else [])
         print("Invalid Selection. Try again")

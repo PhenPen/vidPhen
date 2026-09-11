@@ -62,6 +62,9 @@ def parse_url_list(text):
     import re as _re
     if not text or not isinstance(text, str):
         return ([], [])
+    # Drop stray control characters (eg Ctrl+X) so odd keys become
+    # skippable text instead of crashing downstream.
+    text = "".join(ch for ch in text if ch >= " " or ch in "\n\t")
     raw = [p.strip().strip('"').strip("'") for p in _re.split(r"[\s,;]+", text)]
     raw = [p for p in raw if p]
     good, bad, seen = [], [], set()

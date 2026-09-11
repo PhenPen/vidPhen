@@ -31,7 +31,7 @@ def _scope_to_args(scope):
 
 def plan_scope():
     """Ask E/R/S once. Returns scope tuple. Repeats until valid."""
-    from contentSelect.ui import close_section, open_section
+    from vidphen.contentSelect.ui import close_section, open_section
     open_section()
     print("Which videos in each playlist?")
     print("E) Everything")

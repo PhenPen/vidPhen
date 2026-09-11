@@ -12,7 +12,7 @@ _LANGS = {c: (label, code) for c, label, code in OPTIONS}
 
 
 def show_lang_menu():
-    from contentSelect.ui import open_section
+    from vidphen.contentSelect.ui import open_section
     open_section()
     print("Which subtitles?")
     for choice, label, code in OPTIONS:
@@ -37,7 +37,7 @@ def lang_args_for_choice(choice, manual_code=""):
 
 
 def show_subs_mode_menu():
-    from contentSelect.ui import open_section
+    from vidphen.contentSelect.ui import open_section
     open_section()
     print("Subtitles?")
     print("1) No subtitles - just video")
@@ -47,7 +47,7 @@ def show_subs_mode_menu():
 
 def _pick_language():
     """Ask 1-6 language, return lang_args list. Repeats until valid."""
-    from contentSelect.ui import close_section, prompt
+    from vidphen.contentSelect.ui import close_section, prompt
     show_lang_menu()
     while True:
         sel = prompt("Pick 1-6 : ").strip()
@@ -65,7 +65,7 @@ def _pick_language():
 
 def plan_subs():
     """Before download: return (mode, lang_args). No downloading here."""
-    from contentSelect.ui import close_section, prompt
+    from vidphen.contentSelect.ui import close_section, prompt
     show_subs_mode_menu()
     while True:
         choice = prompt("Pick 1-3 : ").strip()

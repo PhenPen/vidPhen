@@ -13,7 +13,7 @@ def _prompt_url_list(prompt_text):
     print("(Paste one link per line, empty line to finish. Commas work too.)")
     lines = []
     while True:
-        line = ui.prompt("> " if lines else "Enter Youtube Video URLs : ")
+        line = ui.prompt(f"Link {len(lines) + 1} (empty line to finish) : ")
         if not line.strip():
             break
         lines.append(line)
@@ -22,7 +22,7 @@ def _prompt_url_list(prompt_text):
 
 def _preview_batch(urls):
     """Numbered preview section. Returns list of (url, info)."""
-    from contentSelect.ui import close_section, open_section
+    from vidphen.contentSelect.ui import close_section, open_section
     open_section()
     print(f"{len(urls)} video(s) found:")
     infos = []
@@ -102,7 +102,7 @@ def main():
                 quality_scope, subs_scope = "all", "all"
             if quality_scope == "all":
                 ID = video.video(good[0])
-                from contentSelect.quality import ask_fallback_policy, picked_height
+                from vidphen.contentSelect.quality import ask_fallback_policy, picked_height
                 _picked_fmt = ID[0] if isinstance(ID, tuple) else ID
                 if picked_height(_picked_fmt) is None:
                     fallback_policy = "auto"
@@ -128,7 +128,7 @@ def main():
                 if subs_scope == "per":
                     print(f"Subtitles for video {i}/{len(good)}:")
                     cur_mode, cur_args = plan_subs()
-                from contentSelect.quality import get_max_height, picked_height
+                from vidphen.contentSelect.quality import get_max_height, picked_height
                 _fmt = cur_ID[0] if isinstance(cur_ID, tuple) else cur_ID
                 _picked = picked_height(_fmt)
                 if _picked and fallback_policy in ("ask", "skip"):
@@ -140,7 +140,7 @@ def main():
                             skipped += 1
                             continue
                         elif fallback_policy == "ask":
-                            from contentSelect.ui import close_section, open_section
+                            from vidphen.contentSelect.ui import close_section, open_section
                             open_section()
                             print(f"Video {i}/{len(good)}: {titles.get(url, url)}")
                             print(f"Picked: {_picked}p | Best available: {_max}p")
@@ -183,8 +183,8 @@ def main():
             if not good:
                 print("No valid playlist links. Try again")
                 continue
-            from contentSelect.ui import close_section as _close, open_section as _open
-            from metaDataSelect.metaData import fetch_playlist
+            from vidphen.contentSelect.ui import close_section as _close, open_section as _open
+            from vidphen.metaDataSelect.metaData import fetch_playlist
             _open()
             print(f"{len(good)} playlist(s) found:")
             pl_infos = []
@@ -224,7 +224,7 @@ def main():
             else:
                 sub_mode, sub_args = "none", []
             if range_scope == "all":
-                from downloadSelect.downloaderPlaylist import plan_scope
+                from vidphen.downloadSelect.downloaderPlaylist import plan_scope
                 scope = plan_scope()
             else:
                 scope = None

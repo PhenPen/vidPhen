@@ -43,7 +43,7 @@ _FORMATS = {choice: fmt for choice, _, fmt in OPTIONS}
 
 
 def show_menu():
-    from contentSelect.ui import close_section, open_section
+    from vidphen.contentSelect.ui import close_section, open_section
     open_section()
     print("What quality?")
     for choice, label, _ in OPTIONS:
@@ -70,7 +70,7 @@ def picked_height(fmt):
 def get_max_height(url):
     """Best-effort max available height for a video. None if unknown."""
     import re as _re
-    from contentSelect.tableShort import parse_formats, table_short
+    from vidphen.contentSelect.tableShort import parse_formats, table_short
     table = table_short(url, quiet=True)
     if not table:
         return None
@@ -95,7 +95,7 @@ def get_max_height(url):
 
 
 def show_audio_menu():
-    from contentSelect.ui import open_section
+    from vidphen.contentSelect.ui import open_section
     open_section()
     print("Which audio file?")
     for choice, label, _ in _AUDIO_OPTIONS:
@@ -104,7 +104,7 @@ def show_audio_menu():
 
 def ask_audio_type():
     """After picking Audio: return (format_id, extra_args)."""
-    from contentSelect.ui import close_section, prompt
+    from vidphen.contentSelect.ui import close_section, prompt
     show_audio_menu()
     codes = {c: code for c, _, code in _AUDIO_OPTIONS}
     while True:
@@ -121,7 +121,7 @@ def ask_audio_type():
 
 def ask_fallback_policy():
     """If a video lacks the picked quality. Returns 'auto'/'ask'/'skip'."""
-    from contentSelect.ui import close_section, open_section, prompt
+    from vidphen.contentSelect.ui import close_section, open_section, prompt
     open_section()
     print("If a video doesn't have the picked quality?")
     print("1) Auto use best below it (fast)")

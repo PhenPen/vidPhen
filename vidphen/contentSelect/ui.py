@@ -16,9 +16,19 @@ def close_section():
 
 
 def prompt(message=""):
-    """input() that exits cleanly on Ctrl+C / Ctrl+D instead of traceback."""
-    try:
-        return input(message)
-    except (KeyboardInterrupt, EOFError):
-        print("\nCancelled.")
-        raise SystemExit(0)
+    """input() that confirms quit on Ctrl+C / Ctrl+D instead of traceback."""
+    import builtins
+    while True:
+        try:
+            return builtins.input(message)
+        except (KeyboardInterrupt, EOFError):
+            try:
+                again = builtins.input("\nQuit app? (y/n) : ").strip().upper()
+            except (KeyboardInterrupt, EOFError):
+                print("\nBye!")
+                raise SystemExit(0)
+            if again == "Y":
+                print("Bye!")
+                raise SystemExit(0)
+            print("Continuing...")
+            continue

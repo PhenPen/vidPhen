@@ -61,6 +61,6 @@ def subs_lang_select(url):
                 print("Subtitle download failed. Videos may have no subtitles.")
         except FileNotFoundError:
             print("yt-dlp command not found. Install it with: pip install yt-dlp")
-        from contentSelect.ui import close_section
+        from vidphen.contentSelect.ui import close_section
         close_section()
         break

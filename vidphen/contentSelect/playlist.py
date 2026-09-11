@@ -5,8 +5,8 @@ from vidphen.contentSelect.validators import is_valid_format_id
 
 # To show playlist - returns (format_id, extra_args)
 def playlist(url) :
-    from contentSelect.quality import ask_audio_type
-    from contentSelect.ui import close_section
+    from vidphen.contentSelect.quality import ask_audio_type
+    from vidphen.contentSelect.ui import close_section
     print("Quality applies to all videos in the playlist.")
     show_menu()
     while True:
