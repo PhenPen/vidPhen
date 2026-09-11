@@ -94,6 +94,17 @@ def _confirm_preview(url):
             print("Invalid Selection. Try again")
 
 
+def _ask_scope(what):
+    """Same settings for all vs per video. Returns 'all' or 'per'."""
+    while True:
+        choice = input(f"{what} for all videos? 1) Same for all 2) Pick per video : ").strip()
+        if choice == "1":
+            return "all"
+        elif choice == "2":
+            return "per"
+        print("Invalid Selection. Try again")
+
+
 def _ask_another():
     """Return True to go again, False to exit."""
     while True:
@@ -135,7 +146,7 @@ def main():
             if not good:
                 print("No valid video links. Try again")
                 continue
-            _preview_batch(good)
+            infos = _preview_batch(good)
             while True:
                 batch_choice = input(f"Download these {len(good)} video(s)? (y/n) : ").upper()
                 if batch_choice in ("Y", "N"):
@@ -146,14 +157,34 @@ def main():
                 if not _ask_another():
                     return
                 continue
-            ID = video.video(good[0])
-            sub_mode, sub_args = plan_subs()
+            if len(good) > 1:
+                quality_scope = _ask_scope("Quality")
+                subs_scope = _ask_scope("Subtitles")
+            else:
+                quality_scope, subs_scope = "all", "all"
+            if quality_scope == "all":
+                ID = video.video(good[0])
+            else:
+                ID = None
+            if subs_scope == "all":
+                sub_mode, sub_args = plan_subs()
+            else:
+                sub_mode, sub_args = "none", []
             base_dir = ask_base_dir()
-            ok, failed = 0, 0
+            titles = {url: (info["title"] if info else url) for url, info in infos}
+            ok, failed, skipped = 0, 0, 0
             for i, url in enumerate(good, 1):
-                print(f"--- Video {i}/{len(good)} ---")
+                print(f"--- Video {i}/{len(good)}: {titles.get(url, url)} ---")
+                cur_ID = ID
+                if quality_scope == "per":
+                    print(f"Quality for video {i}/{len(good)}:")
+                    cur_ID = video.video(url)
+                cur_mode, cur_args = sub_mode, sub_args
+                if subs_scope == "per":
+                    print(f"Subtitles for video {i}/{len(good)}:")
+                    cur_mode, cur_args = plan_subs()
                 try:
-                    rc = downloaderVideo.downloader(ID, url, sub_mode=sub_mode, sub_args=sub_args, base_dir=base_dir)
+                    rc = downloaderVideo.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir)
                 except Exception as e:
                     print(f"Video {i} failed: {e}")
                     rc = 1
