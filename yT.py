@@ -1,5 +1,5 @@
 from contentSelect import ui, video,playlist
-from contentSelect.validators import is_valid_url, parse_url_list
+from contentSelect.validators import parse_url_list
 from downloadSelect import downloaderVideo,downloaderPlaylist
 from downloadSelect.runner import ask_base_dir
 from metaDataSelect.metaData import fetch, format_duration
@@ -38,52 +38,6 @@ def _preview_batch(urls):
             print(f"{i}) {url} - preview failed")
     close_section()
     return infos
-
-
-def _prompt_url(prompt_text):
-    while True:
-        url = ui.prompt(prompt_text).strip()
-        if is_valid_url(url):
-            return url
-        print("Invalid YouTube URL. Try again")
-
-
-
-def _confirm_preview(url):
-    """Show title/channel/length (or playlist count) and ask to proceed."""
-    from contentSelect.ui import close_section, open_section
-    open_section()
-    try:
-        if "list=" in url:
-            from metaDataSelect.metaData import fetch_playlist
-            info = fetch_playlist(url)
-        else:
-            info = fetch(url)
-    except Exception:
-        info = None
-    if not info:
-        print("Could not preview this link. Proceed anyway?")
-        while True:
-            choice = ui.prompt("Continue? (y/n) : ").upper()
-            if choice == "Y":
-                close_section()
-                return True
-            elif choice == "N":
-                close_section()
-                return False
-            else:
-                print("Invalid Selection. Try again")
-    while True:
-        choice = ui.prompt("Download this? (y/n) : ").upper()
-        if choice == "Y":
-            close_section()
-            return True
-        elif choice == "N":
-            print("Cancelled.")
-            close_section()
-            return False
-        else:
-            print("Invalid Selection. Try again")
 
 
 def _ask_scope(what):

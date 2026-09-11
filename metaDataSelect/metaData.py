@@ -1,4 +1,4 @@
-# Coming soon - now basic implementation via yt-dlp --print
+# Video/playlist metadata preview via yt-dlp (no download)
 import subprocess
 
 
