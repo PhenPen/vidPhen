@@ -218,16 +218,88 @@ def main():
             else:
                 print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
         elif content == "P":
-            url = _prompt_url("Enter Youtube Playlist URL : ")
-            if url is None:
+            parsed = _prompt_url_list("Enter Youtube Playlist URLs : ")
+            if parsed is None:
                 return
-            if not _confirm_preview(url):
+            good, bad = parsed
+            if bad:
+                print(f"Skipped {len(bad)} invalid link(s):")
+                for b in bad:
+                    print(f"  - {b}")
+            if not good:
+                print("No valid playlist links. Try again")
+                continue
+            from contentSelect.ui import close_section as _close, open_section as _open
+            from metaDataSelect.metaData import fetch_playlist
+            _open()
+            print(f"{len(good)} playlist(s) found:")
+            pl_infos = []
+            for i, url in enumerate(good, 1):
+                try:
+                    info = fetch_playlist(url, quiet=True)
+                except Exception:
+                    info = None
+                pl_infos.append((url, info))
+                if info:
+                    print(f"{i}) {info['title']} - {info['count']} videos")
+                else:
+                    print(f"{i}) {url} - preview failed")
+            _close()
+            while True:
+                batch_choice = ui.prompt(f"Download these {len(good)} playlist(s)? (y/n) : ").upper()
+                if batch_choice in ("Y", "N"):
+                    break
+                print("Invalid Selection. Try again")
+            if batch_choice == "N":
+                print("Cancelled.")
                 if not _ask_another():
                     return
                 continue
-            ID = playlist.playlist(url)
-            sub_mode, sub_args = plan_subs()
-            downloaderPlaylist.downloader(ID, url, sub_mode=sub_mode, sub_args=sub_args)
+            if len(good) > 1:
+                quality_scope = _ask_scope("Quality")
+                subs_scope = _ask_scope("Subtitles")
+                range_scope = _ask_scope("Video range")
+            else:
+                quality_scope, subs_scope, range_scope = "all", "all", "per"
+            if quality_scope == "all":
+                ID = playlist.playlist(good[0])
+            else:
+                ID = None
+            if subs_scope == "all":
+                sub_mode, sub_args = plan_subs()
+            else:
+                sub_mode, sub_args = "none", []
+            if range_scope == "all":
+                from downloadSelect.downloaderPlaylist import plan_scope
+                scope = plan_scope()
+            else:
+                scope = None
+            base_dir = ask_base_dir()
+            titles = {url: (info["title"] if info else url) for url, info in pl_infos}
+            ok, failed, skipped = 0, 0, 0
+            for i, url in enumerate(good, 1):
+                print(f"--- Playlist {i}/{len(good)}: {titles.get(url, url)} ---")
+                cur_ID = ID
+                if quality_scope == "per":
+                    print(f"Quality for playlist {i}/{len(good)}:")
+                    cur_ID = playlist.playlist(url)
+                cur_mode, cur_args = sub_mode, sub_args
+                if subs_scope == "per":
+                    print(f"Subtitles for playlist {i}/{len(good)}:")
+                    cur_mode, cur_args = plan_subs()
+                try:
+                    rc = downloaderPlaylist.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope)
+                except Exception as e:
+                    print(f"Playlist {i} failed: {e}")
+                    rc = 1
+                if rc == 0:
+                    ok += 1
+                else:
+                    failed += 1
+            if skipped:
+                print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
+            else:
+                print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
         else:
             print("Not a valid content selection. Try Again")
             continue

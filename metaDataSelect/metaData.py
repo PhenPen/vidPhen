@@ -49,7 +49,7 @@ def fetch(url, quiet=False):
     return info
 
 
-def fetch_playlist(url):
+def fetch_playlist(url, quiet=False):
     """Return {title, count, url} for playlists. No download. None on failure."""
     try:
         title_res = subprocess.run(
@@ -71,6 +71,7 @@ def fetch_playlist(url):
                    if l.strip() and not l.strip().startswith("[")]
     title = title_lines[0].strip() if title_lines else "Playlist"
     info = {"title": title, "count": len(videos), "url": url}
-    print(f"Playlist: {info['title']}")
-    print(f"Videos: {info['count']}")
+    if not quiet:
+        print(f"Playlist: {info['title']}")
+        print(f"Videos: {info['count']}")
     return info
