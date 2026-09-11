@@ -193,7 +193,8 @@ def main():
                 from contentSelect.quality import get_max_height, picked_height
                 _fmt = cur_ID[0] if isinstance(cur_ID, tuple) else cur_ID
                 _picked = picked_height(_fmt)
-                if _picked:
+                if _picked and fallback_policy in ("ask", "skip"):
+                    print(f"Checking available quality ({i}/{len(good)})...")
                     _max = get_max_height(url)
                     if _max and _max < _picked:
                         if fallback_policy == "skip":
@@ -219,8 +220,6 @@ def main():
                                 continue
                             if fc == "3":
                                 fallback_policy = "auto"
-                        else:
-                            print(f"Note: {_max}p used (picked {_picked}p not available)")
                 try:
                     rc = downloaderVideo.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir)
                 except Exception as e:
