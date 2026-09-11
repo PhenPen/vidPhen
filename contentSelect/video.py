@@ -1,6 +1,5 @@
-import subprocess
-
 from contentSelect.quality import get_format, show_menu
+from contentSelect.tableShort import table_short
 from contentSelect.validators import is_valid_format_id
 
 # To show video - returns (format_id, extra_args)
@@ -23,31 +22,14 @@ def video(url):
             return (fmt, ["--extract-audio", "--audio-format", "mp3"] if fmt == "bestaudio" else [])
         print("Invalid Selection. Try again")
 
-# To select video format
+# To select video format (Advanced) - single ID prompt, eg 250 or 247+250
 def videoFormat(url) :
-    try:
-        subprocess.run(['yt-dlp', '-F', url])
-    except FileNotFoundError:
-        print("yt-dlp command not found. Install it with: pip install yt-dlp")
+    if table_short(url) is None:
         return "best"
 
-    print()
-    print("Download either a video and audio file together or a single file")
-    print("For together files, Enter T " \
-    "For a single file, Enter S")
-
-    while True : 
-        separate_or_together = input("Enter Together(T) or Separate(S) : ").upper()
-        if separate_or_together == "S": 
-            video_ID = input('Select file to download using ID in this format eg 250 : ').strip()
-            if is_valid_format_id(video_ID):
-                break
-            print("Invalid format ID. Try again")
-        elif separate_or_together == "T" :
-            video_ID = input('Select a video and audio file using ID in this format eg 247+250 : ').strip()
-            if is_valid_format_id(video_ID):
-                break
-            print("Invalid format ID. Try again")
-        else:
-            print("Invalid Selection.Try again")
+    while True :
+        video_ID = input('Type format ID (eg 250 for one file, 247+250 for video+audio) : ').strip()
+        if is_valid_format_id(video_ID):
+            break
+        print("Invalid format ID. Try again")
     return video_ID
