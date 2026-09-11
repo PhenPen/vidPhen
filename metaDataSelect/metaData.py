@@ -19,7 +19,7 @@ def format_duration(raw):
     return f"{s}s"
 
 
-def fetch(url):
+def fetch(url, quiet=False):
     """Return {title, uploader, duration, url} or None. No download."""
     try:
         result = subprocess.run(
@@ -42,9 +42,10 @@ def fetch(url):
         "duration": parts[2] if len(parts) > 2 else "",
         "url": parts[3] if len(parts) > 3 else url,
     }
-    print(f"Title: {info['title']}")
-    print(f"Uploader: {info['uploader']}")
-    print(f"Duration: {format_duration(info['duration'])}")
+    if not quiet:
+        print(f"Title: {info['title']}")
+        print(f"Uploader: {info['uploader']}")
+        print(f"Duration: {format_duration(info['duration'])}")
     return info
 
 
