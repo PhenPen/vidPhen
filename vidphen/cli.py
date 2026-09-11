@@ -85,6 +85,8 @@ def _ask_another():
 
 
 def main():
+    from vidphen.doctor import run_doctor
+    run_doctor()
     # Video or Playlist selection, loop until user quits
     while True:
         print("Enter V for Video and P for Playlist")

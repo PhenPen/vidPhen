@@ -4,6 +4,7 @@ from vidphen.contentSelect.quality import get_format, picked_height
 from vidphen.contentSelect.validators import is_valid_format_id, is_valid_url, parse_items, parse_range, parse_url_list
 from vidphen.metaDataSelect.metaData import format_duration
 from vidphen.subtitleSelect.sub_langs import lang_args_for_choice
+from vidphen.doctor import _parse_version, check_python, instructions_for
 
 failures = []
 
@@ -62,10 +63,19 @@ check("lang bad None", lang_args_for_choice("9") is None)
 
 # Imports with no prompt on import (would hang waiting for input if broken)
 import vidphen.contentSelect.ui  # noqa: F401
+import vidphen.doctor  # noqa: F401
 import vidphen.downloadSelect.runner  # noqa: F401
 import vidphen.subtitleSelect.subsPlaylist  # noqa: F401
 import vidphen.subtitleSelect.subsVideo  # noqa: F401
 check("imports need no input", True)
+
+# Doctor helpers (pure, no system changes)
+check("parse version 2026.8.19", _parse_version("yt-dlp 2026.8.19") == (2026, 8, 19))
+check("parse version bad None", _parse_version("no version here") is None)
+py_ok, py_cur, py_req = check_python()
+check("python check runs", isinstance(py_ok, bool) and py_cur and py_req == "3.9")
+check("yt-dlp instructions exist", len(instructions_for("yt-dlp")) > 0)
+check("ffmpeg instructions exist", len(instructions_for("ffmpeg")) > 0)
 
 print()
 if failures:
