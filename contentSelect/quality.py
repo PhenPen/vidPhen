@@ -26,6 +26,8 @@ OPTIONS = [
      "AUDIO_ASK"),
     ("10", "Audio original quick (no convert)",
      "bestaudio/best"),
+    ("11", "8K - 4320p (rare, giant files)",
+     "bv*[height<=4320][ext=mp4][vcodec^=avc1]+ba/b[height<=4320][ext=mp4]/bv*[height<=4320]+ba/b[height<=4320]/b/best"),
 ]
 
 _AUDIO_OPTIONS = [
@@ -46,7 +48,7 @@ def show_menu():
     print("What quality?")
     for choice, label, _ in OPTIONS:
         print(f"{choice}) {label}")
-    print("11) Advanced - type ID yourself")
+    print("12) Advanced - type ID yourself")
 
 
 def get_format(choice):

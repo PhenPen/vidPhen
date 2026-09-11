@@ -8,8 +8,8 @@ def video(url):
     from contentSelect.quality import ask_audio_type
     show_menu()
     while True:
-        choice = prompt("Pick 1-11 : ").strip()
-        if choice == "11":
+        choice = prompt("Pick 1-12 : ").strip()
+        if choice == "12":
             fmt = videoFormat(url)
             from contentSelect.ui import close_section
             close_section()

@@ -10,8 +10,8 @@ def playlist(url) :
     print("Quality applies to all videos in the playlist.")
     show_menu()
     while True:
-        choice = prompt("Pick 1-11 : ").strip()
-        if choice == "11":
+        choice = prompt("Pick 1-12 : ").strip()
+        if choice == "12":
             fmt = playlistFormat(url)
             close_section()
             return (fmt, ["--extract-audio", "--audio-format", "mp3"] if fmt == "bestaudio" else [])
