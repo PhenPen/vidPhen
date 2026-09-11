@@ -83,7 +83,7 @@ def run_yt_dlp(args):
     else:
         print("Download failed. Common causes:")
         print("- Private / age-restricted / login-required video")
-        print("- No internet or YouTube blocked the request (try again)")
+        print("- No internet or the site blocked the request (try again)")
         print("- File already exists and --no-overwrites skipped it (check folder)")
         print("- Picked format not available (try 1) Best)")
     return result.returncode

@@ -37,7 +37,7 @@ def _prompt_single_url(prompt_text):
         url = ui.prompt(prompt_text).strip()
         if is_valid_url(url):
             return ([url], [])
-        print("Invalid YouTube URL. Try again")
+        print("Invalid link. Paste a video link and try again")
 
 
 def _preview_batch(urls):
@@ -99,9 +99,9 @@ def main():
             return
         if content == "V":
             if _ask_count("videos") == "one":
-                good, bad = _prompt_single_url("Enter Youtube Video URL : ")
+                good, bad = _prompt_single_url("Enter video URL : ")
             else:
-                good, bad = _prompt_url_list("Enter Youtube Video URLs : ")
+                good, bad = _prompt_url_list("Enter video URLs : ")
             if bad:
                 print(f"Skipped {len(bad)} invalid link(s):")
                 for b in bad:
@@ -198,9 +198,9 @@ def main():
                 print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
         elif content == "P":
             if _ask_count("playlists") == "one":
-                good, bad = _prompt_single_url("Enter Youtube Playlist URL : ")
+                good, bad = _prompt_single_url("Enter playlist URL : ")
             else:
-                good, bad = _prompt_url_list("Enter Youtube Playlist URLs : ")
+                good, bad = _prompt_url_list("Enter playlist URLs : ")
             if bad:
                 print(f"Skipped {len(bad)} invalid link(s):")
                 for b in bad:
