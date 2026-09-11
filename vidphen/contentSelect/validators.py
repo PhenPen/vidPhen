@@ -1,7 +1,7 @@
 import re
 
-_YOUTUBE_RE = re.compile(
-    r"^(https?://)?(www\.|m\.|music\.)?(youtube\.com/(watch\?.*v=|playlist\?.*list=|shorts/)|youtu\.be/)[\w\-]+",
+_LINK_RE = re.compile(
+    r"^(https?://)?[^\s/$.?#]+\.[^\s]*$",
     re.IGNORECASE,
 )
 
@@ -9,11 +9,16 @@ _FORMAT_RE = re.compile(r"^(\d+[+\-/]?)+$", re.IGNORECASE)
 
 
 def is_valid_url(url):
-    """Best-effort YouTube URL check (video, playlist, shorts, youtu.be)."""
+    """Best-effort video link check (any site - yt-dlp decides support).
+
+    Requires something link-shaped (a dot, no spaces). Bad but
+    valid-looking links fail later at preview/download with a clear
+    message instead of crashing.
+    """
     if not url or not isinstance(url, str):
         return False
     url = url.strip()
-    return bool(_YOUTUBE_RE.search(url))
+    return bool(_LINK_RE.match(url))
 
 
 def is_valid_format_id(format_id):

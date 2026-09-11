@@ -19,8 +19,11 @@ def check(name, cond):
 check("valid watch url", is_valid_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
 check("valid youtu.be url", is_valid_url("https://youtu.be/dQw4w9WgXcQ"))
 check("valid playlist url", is_valid_url("https://www.youtube.com/playlist?list=PL123abc"))
+check("valid other-site url", is_valid_url("https://vimeo.com/123456789"))
+check("valid bare domain url", is_valid_url("vimeo.com/123456789"))
 check("reject notaurl", not is_valid_url("notaurl"))
 check("reject empty", not is_valid_url(""))
+check("reject spaces", not is_valid_url("not a link"))
 
 
 def _choices():
