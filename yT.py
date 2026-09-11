@@ -164,8 +164,15 @@ def main():
                 quality_scope, subs_scope = "all", "all"
             if quality_scope == "all":
                 ID = video.video(good[0])
+                from contentSelect.quality import ask_fallback_policy, picked_height
+                _picked_fmt = ID[0] if isinstance(ID, tuple) else ID
+                if picked_height(_picked_fmt) is None:
+                    fallback_policy = "auto"
+                else:
+                    fallback_policy = ask_fallback_policy()
             else:
                 ID = None
+                fallback_policy = "auto"
             if subs_scope == "all":
                 sub_mode, sub_args = plan_subs()
             else:
@@ -183,6 +190,37 @@ def main():
                 if subs_scope == "per":
                     print(f"Subtitles for video {i}/{len(good)}:")
                     cur_mode, cur_args = plan_subs()
+                from contentSelect.quality import get_max_height, picked_height
+                _fmt = cur_ID[0] if isinstance(cur_ID, tuple) else cur_ID
+                _picked = picked_height(_fmt)
+                if _picked:
+                    _max = get_max_height(url)
+                    if _max and _max < _picked:
+                        if fallback_policy == "skip":
+                            print(f"Skipped: best is {_max}p, picked {_picked}p")
+                            skipped += 1
+                            continue
+                        elif fallback_policy == "ask":
+                            from contentSelect.ui import close_section, open_section
+                            open_section()
+                            print(f"Video {i}/{len(good)}: {titles.get(url, url)}")
+                            print(f"Picked: {_picked}p | Best available: {_max}p")
+                            print("1) Download lower for this video")
+                            print("2) Skip this video")
+                            print("3) Lower for this + all remaining")
+                            while True:
+                                fc = input("Pick 1-3 : ").strip()
+                                if fc in ("1", "2", "3"):
+                                    break
+                                print("Invalid Selection. Try again")
+                            close_section()
+                            if fc == "2":
+                                skipped += 1
+                                continue
+                            if fc == "3":
+                                fallback_policy = "auto"
+                        else:
+                            print(f"Note: {_max}p used (picked {_picked}p not available)")
                 try:
                     rc = downloaderVideo.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir)
                 except Exception as e:
@@ -192,7 +230,10 @@ def main():
                     ok += 1
                 else:
                     failed += 1
-            print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
+            if skipped:
+                print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
+            else:
+                print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
         elif content == "P":
             url = _prompt_url("Enter Youtube Playlist URL : ")
             if url is None:

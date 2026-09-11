@@ -113,3 +113,19 @@ def ask_audio_type():
         if code is None:
             return ("bestaudio/best", [])
         return ("bestaudio", ["--extract-audio", "--audio-format", code])
+
+
+def ask_fallback_policy():
+    """If a video lacks the picked quality. Returns 'auto'/'ask'/'skip'."""
+    from contentSelect.ui import close_section, open_section
+    open_section()
+    print("If a video doesn't have the picked quality?")
+    print("1) Auto use best below it (fast)")
+    print("2) Ask me each time")
+    print("3) Skip that video")
+    while True:
+        choice = input("Pick 1-3 : ").strip()
+        if choice in ("1", "2", "3"):
+            close_section()
+            return {"1": "auto", "2": "ask", "3": "skip"}[choice]
+        print("Invalid Selection. Try again")
