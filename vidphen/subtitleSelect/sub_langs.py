@@ -5,7 +5,7 @@ OPTIONS = [
     ("2", "French", "fr"),
     ("3", "Spanish", "es"),
     ("4", "German", "de"),
-    ("5", "All / auto (default)", None),
+    ("5", "Default language (usually English)", None),
 ]
 
 _LANGS = {c: (label, code) for c, label, code in OPTIONS}
@@ -63,6 +63,18 @@ def _pick_language():
         return args
 
 
+def _ask_auto_captions():
+    """Offer auto-generated captions as fallback. Default yes."""
+    from vidphen.contentSelect.ui import prompt
+    while True:
+        choice = prompt("Also fetch auto-generated captions if manual ones don't exist? (y/n) : ").strip().upper()
+        if choice in ("", "Y"):
+            return ["--write-automatic-subs"]
+        elif choice == "N":
+            return []
+        print("Invalid Selection. Try again")
+
+
 def plan_subs():
     """Before download: return (mode, lang_args). No downloading here."""
     from vidphen.contentSelect.ui import close_section, prompt
@@ -75,5 +87,6 @@ def plan_subs():
         elif choice in ("2", "3"):
             mode = "with" if choice == "2" else "only"
             lang_args = _pick_language()
+            lang_args = lang_args + _ask_auto_captions()
             return (mode, lang_args)
         print("Invalid Selection. Try again")
