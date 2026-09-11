@@ -1,6 +1,6 @@
-import json
 import subprocess
 
+from contentSelect.tableShort import table_short
 from downloadSelect.runner import run_yt_dlp
 from extractors.base import Extractor
 
@@ -13,16 +13,7 @@ class YtDlpExtractor(Extractor):
     """
 
     def list_formats(self, url):
-        try:
-            result = subprocess.run(['yt-dlp', '-F', url], capture_output=True, text=True)
-        except FileNotFoundError:
-            print("yt-dlp command not found. Install it with: pip install yt-dlp")
-            return None
-        if result.returncode != 0:
-            print(result.stderr or "Failed to list formats")
-            return None
-        print(result.stdout)
-        return result.stdout
+        return table_short(url)
 
     def list_subs(self, url):
         try:

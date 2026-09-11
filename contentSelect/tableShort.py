@@ -1,7 +1,7 @@
 import subprocess
 
 
-def table_short(url):
+def table_short(url, quiet=False):
     """Run `yt-dlp -F` and return stdout. Returns None if yt-dlp is missing."""
     try:
         result = subprocess.run(['yt-dlp', '-F', url], capture_output=True, text=True)
@@ -11,7 +11,8 @@ def table_short(url):
     if result.returncode != 0:
         print(result.stderr or "Failed to list formats")
         return None
-    print(result.stdout)
+    if not quiet:
+        print(result.stdout)
     return result.stdout
 
 

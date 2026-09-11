@@ -68,24 +68,26 @@ def picked_height(fmt):
 def get_max_height(url):
     """Best-effort max available height for a video. None if unknown."""
     import re as _re
-    import subprocess
-    try:
-        result = subprocess.run(['yt-dlp', '-F', url], capture_output=True, text=True)
-    except FileNotFoundError:
-        return None
-    if result.returncode != 0:
+    from contentSelect.tableShort import parse_formats, table_short
+    table = table_short(url, quiet=True)
+    if not table:
         return None
     heights = []
-    for m in _re.finditer(r"(\d{3,4})[x×](\d{3,4})", result.stdout or ""):
-        try:
-            heights.append(int(m.group(2)))
-        except ValueError:
-            pass
-    for m in _re.finditer(r"\b(\d{3,4})p\d?\b", result.stdout or ""):
-        try:
-            heights.append(int(m.group(1)))
-        except ValueError:
-            pass
+    for entry in parse_formats(table):
+        res = entry.get("resolution", "")
+        m = _re.search(r"(\d{3,4})[x×](\d{3,4})", res)
+        if m:
+            try:
+                heights.append(int(m.group(2)))
+                continue
+            except ValueError:
+                pass
+        m = _re.search(r"\b(\d{3,4})p\d?\b", res + " " + entry.get("note", ""))
+        if m:
+            try:
+                heights.append(int(m.group(1)))
+            except ValueError:
+                pass
     heights = [h for h in heights if 100 <= h <= 4320]
     return max(heights) if heights else None
 
