@@ -47,12 +47,12 @@ def show_subs_mode_menu():
 
 def _pick_language():
     """Ask 1-6 language, return lang_args list. Repeats until valid."""
-    from contentSelect.ui import close_section
+    from contentSelect.ui import close_section, prompt
     show_lang_menu()
     while True:
-        sel = input("Pick 1-6 : ").strip()
+        sel = prompt("Pick 1-6 : ").strip()
         if sel == "6":
-            lang = input("Enter language code eg en,fr,es : ").strip()
+            lang = prompt("Enter language code eg en,fr,es : ").strip()
             args = lang_args_for_choice("6", lang)
         else:
             args = lang_args_for_choice(sel)
@@ -65,10 +65,10 @@ def _pick_language():
 
 def plan_subs():
     """Before download: return (mode, lang_args). No downloading here."""
-    from contentSelect.ui import close_section
+    from contentSelect.ui import close_section, prompt
     show_subs_mode_menu()
     while True:
-        choice = input("Pick 1-3 : ").strip()
+        choice = prompt("Pick 1-3 : ").strip()
         if choice == "1":
             close_section()
             return ("none", [])

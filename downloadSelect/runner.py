@@ -3,6 +3,7 @@ import shutil
 import subprocess
 
 from configSelect.config import default_location, set_default_location
+from contentSelect.ui import prompt
 
 PLAYLIST_SUBFOLDER = "%(playlist_title)s/%(playlist_index)s - %(title)s.%(ext)s"
 
@@ -41,16 +42,16 @@ def ask_base_dir():
     if current:
         print(f"Saved folder: {current}")
     while True:
-        choice = input("Save to Default (D), Custom once (C), Change default (S)? : ").upper()
+        choice = prompt("Save to Default (D), Custom once (C), Change default (S)? : ").upper()
         if choice in ("D", "Y"):
             return default_location()
         elif choice in ("C", "N"):
-            raw = input("Enter file location eg C:/Users/... : ").strip().strip('"')
+            raw = prompt("Enter file location eg C:/Users/... : ").strip().strip('"')
             path = pathlib.Path(raw).expanduser()
             path.mkdir(parents=True, exist_ok=True)
             return str(path)
         elif choice == "S":
-            raw = input("Enter new default folder : ").strip().strip('"')
+            raw = prompt("Enter new default folder : ").strip().strip('"')
             return set_default_location(raw)
         else:
             print("Invalid Selection. Try again")

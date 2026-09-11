@@ -1,5 +1,6 @@
 from contentSelect.quality import get_format, show_menu
 from contentSelect.tableShort import table_short
+from contentSelect.ui import prompt
 from contentSelect.validators import is_valid_format_id
 
 # To show playlist - returns (format_id, extra_args)
@@ -9,7 +10,7 @@ def playlist(url) :
     print("Quality applies to all videos in the playlist.")
     show_menu()
     while True:
-        choice = input("Pick 1-11 : ").strip()
+        choice = prompt("Pick 1-11 : ").strip()
         if choice == "11":
             fmt = playlistFormat(url)
             close_section()
@@ -29,7 +30,7 @@ def playlistFormat(url) :
         return "bv*+ba/b"
 
     while True :
-        playlist_ID = input('Type format ID (eg 250 for one file, 247+250 for video+audio) : ').strip()
+        playlist_ID = prompt('Type format ID (eg 250 for one file, 247+250 for video+audio) : ').strip()
         if is_valid_format_id(playlist_ID):
             break
         print("Invalid format ID. Try again")

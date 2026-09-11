@@ -1,4 +1,4 @@
-from contentSelect import video,playlist
+from contentSelect import ui, video,playlist
 from contentSelect.validators import is_valid_url, parse_url_list
 from downloadSelect import downloaderVideo,downloaderPlaylist
 from downloadSelect.runner import ask_base_dir
@@ -7,17 +7,13 @@ from subtitleSelect.sub_langs import plan_subs
 
 
 
-def _prompt_url_list(prompt):
+def _prompt_url_list(prompt_text):
     """Paste one per line (empty line finishes); commas/spaces also ok."""
-    print(prompt)
+    print(prompt_text)
     print("(Paste one link per line, empty line to finish. Commas work too.)")
     lines = []
     while True:
-        try:
-            line = input("> " if lines else "Enter Youtube Video URLs : ")
-        except KeyboardInterrupt:
-            print("\nProcess Interrupted by User. Exiting...")
-            return None
+        line = ui.prompt("> " if lines else "Enter Youtube Video URLs : ")
         if not line.strip():
             break
         lines.append(line)
@@ -44,13 +40,9 @@ def _preview_batch(urls):
     return infos
 
 
-def _prompt_url(prompt):
+def _prompt_url(prompt_text):
     while True:
-        try:
-            url = input(prompt).strip()
-        except KeyboardInterrupt:
-            print("\nProcess Interrupted by User. Exiting...")
-            return None
+        url = ui.prompt(prompt_text).strip()
         if is_valid_url(url):
             return url
         print("Invalid YouTube URL. Try again")
@@ -72,7 +64,7 @@ def _confirm_preview(url):
     if not info:
         print("Could not preview this link. Proceed anyway?")
         while True:
-            choice = input("Continue? (y/n) : ").upper()
+            choice = ui.prompt("Continue? (y/n) : ").upper()
             if choice == "Y":
                 close_section()
                 return True
@@ -82,7 +74,7 @@ def _confirm_preview(url):
             else:
                 print("Invalid Selection. Try again")
     while True:
-        choice = input("Download this? (y/n) : ").upper()
+        choice = ui.prompt("Download this? (y/n) : ").upper()
         if choice == "Y":
             close_section()
             return True
@@ -97,7 +89,7 @@ def _confirm_preview(url):
 def _ask_scope(what):
     """Same settings for all vs per video. Returns 'all' or 'per'."""
     while True:
-        choice = input(f"{what} for all videos? 1) Same for all 2) Pick per video : ").strip()
+        choice = ui.prompt(f"{what} for all videos? 1) Same for all 2) Pick per video : ").strip()
         if choice == "1":
             return "all"
         elif choice == "2":
@@ -108,11 +100,7 @@ def _ask_scope(what):
 def _ask_another():
     """Return True to go again, False to exit."""
     while True:
-        try:
-            choice = input("Download another? (y/n) : ").upper()
-        except KeyboardInterrupt:
-            print("\nProcess Interrupted by User. Exiting...")
-            return False
+        choice = ui.prompt("Download another? (y/n) : ").upper()
         if choice == "Y":
             return True
         elif choice == "N":
@@ -126,11 +114,7 @@ def main():
     # Video or Playlist selection, loop until user quits
     while True:
         print("Enter V for Video and P for Playlist")
-        try:
-            content = input("Download Video or Playlist (or Q to quit) : ").upper()
-        except KeyboardInterrupt:
-            print("\nProcess Interrupted by User. Exiting...")
-            return
+        content = ui.prompt("Download Video or Playlist (or Q to quit) : ").upper()
         if content == "Q":
             print("Bye!")
             return
@@ -148,7 +132,7 @@ def main():
                 continue
             infos = _preview_batch(good)
             while True:
-                batch_choice = input(f"Download these {len(good)} video(s)? (y/n) : ").upper()
+                batch_choice = ui.prompt(f"Download these {len(good)} video(s)? (y/n) : ").upper()
                 if batch_choice in ("Y", "N"):
                     break
                 print("Invalid Selection. Try again")
@@ -210,7 +194,7 @@ def main():
                             print("2) Skip this video")
                             print("3) Lower for this + all remaining")
                             while True:
-                                fc = input("Pick 1-3 : ").strip()
+                                fc = ui.prompt("Pick 1-3 : ").strip()
                                 if fc in ("1", "2", "3"):
                                     break
                                 print("Invalid Selection. Try again")

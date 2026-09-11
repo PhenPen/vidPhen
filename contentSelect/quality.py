@@ -102,11 +102,11 @@ def show_audio_menu():
 
 def ask_audio_type():
     """After picking Audio: return (format_id, extra_args)."""
-    from contentSelect.ui import close_section
+    from contentSelect.ui import close_section, prompt
     show_audio_menu()
     codes = {c: code for c, _, code in _AUDIO_OPTIONS}
     while True:
-        choice = input("Pick 1-6 : ").strip()
+        choice = prompt("Pick 1-6 : ").strip()
         if choice not in codes:
             print("Invalid Selection. Try again")
             continue
@@ -119,14 +119,14 @@ def ask_audio_type():
 
 def ask_fallback_policy():
     """If a video lacks the picked quality. Returns 'auto'/'ask'/'skip'."""
-    from contentSelect.ui import close_section, open_section
+    from contentSelect.ui import close_section, open_section, prompt
     open_section()
     print("If a video doesn't have the picked quality?")
     print("1) Auto use best below it (fast)")
     print("2) Ask me each time")
     print("3) Skip that video")
     while True:
-        choice = input("Pick 1-3 : ").strip()
+        choice = prompt("Pick 1-3 : ").strip()
         if choice in ("1", "2", "3"):
             close_section()
             return {"1": "auto", "2": "ask", "3": "skip"}[choice]

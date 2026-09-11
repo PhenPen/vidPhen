@@ -1,5 +1,6 @@
 from contentSelect.quality import get_format, show_menu
 from contentSelect.tableShort import table_short
+from contentSelect.ui import prompt
 from contentSelect.validators import is_valid_format_id
 
 # To show video - returns (format_id, extra_args)
@@ -7,7 +8,7 @@ def video(url):
     from contentSelect.quality import ask_audio_type
     show_menu()
     while True:
-        choice = input("Pick 1-11 : ").strip()
+        choice = prompt("Pick 1-11 : ").strip()
         if choice == "11":
             fmt = videoFormat(url)
             from contentSelect.ui import close_section
@@ -28,7 +29,7 @@ def videoFormat(url) :
         return "best"
 
     while True :
-        video_ID = input('Type format ID (eg 250 for one file, 247+250 for video+audio) : ').strip()
+        video_ID = prompt('Type format ID (eg 250 for one file, 247+250 for video+audio) : ').strip()
         if is_valid_format_id(video_ID):
             break
         print("Invalid format ID. Try again")

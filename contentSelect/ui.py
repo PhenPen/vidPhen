@@ -13,3 +13,12 @@ def open_section():
 
 def close_section():
     divider()
+
+
+def prompt(message=""):
+    """input() that exits cleanly on Ctrl+C / Ctrl+D instead of traceback."""
+    try:
+        return input(message)
+    except (KeyboardInterrupt, EOFError):
+        print("\nCancelled.")
+        raise SystemExit(0)

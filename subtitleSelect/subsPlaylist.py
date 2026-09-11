@@ -1,6 +1,7 @@
 import subprocess
 
 from configSelect.config import default_location
+from contentSelect.ui import prompt
 from contentSelect.validators import parse_items
 from downloadSelect.runner import build_playlist_template
 from subtitleSelect.sub_langs import lang_args_for_choice, show_lang_menu
@@ -12,9 +13,9 @@ def _download_template():
 
 
 def _playlist_items_args():
-    choice = input("Subtitles for Entire playlist (E) or specific items (S) : ").upper()
+    choice = prompt("Subtitles for Entire playlist (E) or specific items (S) : ").upper()
     if choice == "S":
-        raw = input("Enter playlist items eg 1,4,6 : ").strip()
+        raw = prompt("Enter playlist items eg 1,4,6 : ").strip()
         items = parse_items(raw)
         if items is None:
             print("Invalid list. Use format eg 1,4,6")
@@ -25,7 +26,7 @@ def _playlist_items_args():
 
 def subs(url):
     while True:
-        subs_select = input("Do you want subtitles (y/n) : ").upper()
+        subs_select = prompt("Do you want subtitles (y/n) : ").upper()
         if subs_select == "Y":
             print("Selected Subtitles")
             subs_lang_select(url)
@@ -40,9 +41,9 @@ def subs(url):
 def subs_lang_select(url):
     show_lang_menu()
     while True:
-        sel = input("Pick 1-6 : ").strip()
+        sel = prompt("Pick 1-6 : ").strip()
         if sel == "6":
-            lang = input("Enter language code eg en,fr,es : ").strip()
+            lang = prompt("Enter language code eg en,fr,es : ").strip()
             lang_args = lang_args_for_choice("6", lang)
         else:
             lang_args = lang_args_for_choice(sel)

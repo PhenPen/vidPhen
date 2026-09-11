@@ -1,5 +1,6 @@
 import subprocess
 from configSelect.config import default_location
+from contentSelect.ui import prompt
 from subtitleSelect.sub_langs import lang_args_for_choice, show_lang_menu
 
 
@@ -9,7 +10,7 @@ def _download_template():
 
 def subs(url) :
     while True:
-        subs_Select_input = input("Do you want subtitles (y/n) : ").upper()
+        subs_Select_input = prompt("Do you want subtitles (y/n) : ").upper()
         if subs_Select_input == "Y" :
             print("Selected Subtitles")
             subs_Lang_Select(url)
@@ -24,9 +25,9 @@ def subs(url) :
 def subs_Lang_Select(url) :
     show_lang_menu()
     while True :
-        subs_selection = input("Pick 1-6 : ").strip()
+        subs_selection = prompt("Pick 1-6 : ").strip()
         if subs_selection == "6":
-            lang = input("Enter language code eg en,fr,es : ").strip()
+            lang = prompt("Enter language code eg en,fr,es : ").strip()
             args = lang_args_for_choice("6", lang)
             if args is None:
                 print("Invalid Selection. Try again")

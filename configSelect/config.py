@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from contentSelect.ui import prompt
+
 
 def get_config_path():
     """Cross-platform config file location."""
@@ -77,7 +79,7 @@ def default_location():
         except OSError:
             pass
         return saved
-    downloadPath = input("Enter default location for downloads : ").strip().strip('"')
+    downloadPath = prompt("Enter default location for downloads : ").strip().strip('"')
     return set_default_location(downloadPath)
 
 

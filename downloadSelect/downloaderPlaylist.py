@@ -1,3 +1,4 @@
+from contentSelect.ui import prompt
 from contentSelect.validators import parse_items, parse_range
 from downloadSelect.runner import ask_base_dir, build_playlist_template, run_yt_dlp
 
@@ -23,7 +24,7 @@ def downloader(ID, url, sub_mode="none", sub_args=None) :
     # Selecting index of playlist
     print("Do you want to download everything in the playlist, a particular range of videos or only specific videos")
     print()
-    playlistIndexConfirmation = input("Enter E for Everything, R for Range of videos and S for specific videos : ").upper()
+    playlistIndexConfirmation = prompt("Enter E for Everything, R for Range of videos and S for specific videos : ").upper()
 
     # Downloading based on index selection
     while True:
@@ -33,7 +34,7 @@ def downloader(ID, url, sub_mode="none", sub_args=None) :
 
         elif playlistIndexConfirmation == "R" :
             print("Range format = Beginning Video Range - Ending Video Range")
-            playlistRange = input("Enter the range of video index you want in the Range format eg 2-19 :  ")
+            playlistRange = prompt("Enter the range of video index you want in the Range format eg 2-19 :  ")
             parsed = parse_range(playlistRange)
             if parsed is None:
                 print("Invalid range. Use format eg 2-19")
@@ -45,7 +46,7 @@ def downloader(ID, url, sub_mode="none", sub_args=None) :
         elif playlistIndexConfirmation == "S" :
             print("Specifics format = 1,4,6,7,9")
             print("If I want to download 5 videos with index 1,4,6,7,9, I would enter it as shown above")
-            raw_items = input("Enter all the index of all videos in the Specifics format eg 2,3,4,5,... :  ")
+            raw_items = prompt("Enter all the index of all videos in the Specifics format eg 2,3,4,5,... :  ")
             playlistIndexSpecifics = parse_items(raw_items)
             if playlistIndexSpecifics is None:
                 print("Invalid list. Use format eg 1,4,6 with numbers only")
