@@ -68,8 +68,6 @@ check("lang bad None", lang_args_for_choice("9") is None)
 import vidphen.contentSelect.ui  # noqa: F401
 import vidphen.doctor  # noqa: F401
 import vidphen.downloadSelect.runner  # noqa: F401
-import vidphen.subtitleSelect.subsPlaylist  # noqa: F401
-import vidphen.subtitleSelect.subsVideo  # noqa: F401
 check("imports need no input", True)
 
 # Doctor helpers (pure, no system changes)
