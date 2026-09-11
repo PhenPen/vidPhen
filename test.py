@@ -77,6 +77,21 @@ check("python check runs", isinstance(py_ok, bool) and py_cur and py_req == "3.9
 check("yt-dlp instructions exist", len(instructions_for("yt-dlp")) > 0)
 check("ffmpeg instructions exist", len(instructions_for("ffmpeg")) > 0)
 
+# Packaging: installed dist matches source tree
+import vidphen
+from importlib import metadata as _md
+check("dist version matches source", _md.version("vidphen") == vidphen.__version__)
+_eps = _md.entry_points()
+if hasattr(_eps, "select"):
+    _eps = _eps.select(group="console_scripts")
+else:
+    _eps = _eps.get("console_scripts", [])
+check("vidphen console script installed", "vidphen" in [e.name for e in _eps])
+from vidphen.contentSelect.ui import BANNER, HEADER_LINE
+_banner_lines = [l for l in BANNER.splitlines() if l.strip()]
+check("banner is multi-line figlet art", len(_banner_lines) >= 5 and "___" in BANNER)
+check("header line tagged", "VIDPHEN" in HEADER_LINE)
+
 print()
 if failures:
     print(f"{len(failures)} FAILED")
