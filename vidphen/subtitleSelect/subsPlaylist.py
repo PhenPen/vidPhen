@@ -1,10 +1,10 @@
 import subprocess
 
-from configSelect.config import default_location
-from contentSelect.ui import prompt
-from contentSelect.validators import parse_items
-from downloadSelect.runner import build_playlist_template
-from subtitleSelect.sub_langs import lang_args_for_choice, show_lang_menu
+from vidphen.configSelect.config import default_location
+from vidphen.contentSelect.ui import prompt
+from vidphen.contentSelect.validators import parse_items
+from vidphen.downloadSelect.runner import build_playlist_template
+from vidphen.subtitleSelect.sub_langs import lang_args_for_choice, show_lang_menu
 
 
 def _download_template():

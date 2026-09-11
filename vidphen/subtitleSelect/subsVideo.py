@@ -1,7 +1,7 @@
 import subprocess
-from configSelect.config import default_location
-from contentSelect.ui import prompt
-from subtitleSelect.sub_langs import lang_args_for_choice, show_lang_menu
+from vidphen.configSelect.config import default_location
+from vidphen.contentSelect.ui import prompt
+from vidphen.subtitleSelect.sub_langs import lang_args_for_choice, show_lang_menu
 
 
 def _download_template():

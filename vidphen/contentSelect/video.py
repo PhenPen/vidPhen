@@ -1,7 +1,7 @@
-from contentSelect.quality import get_format, show_menu
-from contentSelect.tableShort import table_short
-from contentSelect.ui import prompt
-from contentSelect.validators import is_valid_format_id
+from vidphen.contentSelect.quality import get_format, show_menu
+from vidphen.contentSelect.tableShort import table_short
+from vidphen.contentSelect.ui import prompt
+from vidphen.contentSelect.validators import is_valid_format_id
 
 # To show video - returns (format_id, extra_args)
 def video(url):

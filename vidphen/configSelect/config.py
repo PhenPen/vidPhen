@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from contentSelect.ui import prompt
+from vidphen.contentSelect.ui import prompt
 
 
 def get_config_path():

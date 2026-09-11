@@ -1,9 +1,9 @@
 # Automated checks - no network, no prompts. Run: python test.py
-from contentSelect.quality import ask_fallback_policy  # noqa: F401 (import check)
-from contentSelect.quality import get_format, picked_height
-from contentSelect.validators import is_valid_format_id, is_valid_url, parse_items, parse_range, parse_url_list
-from metaDataSelect.metaData import format_duration
-from subtitleSelect.sub_langs import lang_args_for_choice
+from vidphen.contentSelect.quality import ask_fallback_policy  # noqa: F401 (import check)
+from vidphen.contentSelect.quality import get_format, picked_height
+from vidphen.contentSelect.validators import is_valid_format_id, is_valid_url, parse_items, parse_range, parse_url_list
+from vidphen.metaDataSelect.metaData import format_duration
+from vidphen.subtitleSelect.sub_langs import lang_args_for_choice
 
 failures = []
 
@@ -61,10 +61,10 @@ check("lang 5 auto", lang_args_for_choice("5") == [])
 check("lang bad None", lang_args_for_choice("9") is None)
 
 # Imports with no prompt on import (would hang waiting for input if broken)
-import contentSelect.ui  # noqa: F401
-import downloadSelect.runner  # noqa: F401
-import subtitleSelect.subsPlaylist  # noqa: F401
-import subtitleSelect.subsVideo  # noqa: F401
+import vidphen.contentSelect.ui  # noqa: F401
+import vidphen.downloadSelect.runner  # noqa: F401
+import vidphen.subtitleSelect.subsPlaylist  # noqa: F401
+import vidphen.subtitleSelect.subsVideo  # noqa: F401
 check("imports need no input", True)
 
 print()

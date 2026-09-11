@@ -1,8 +1,8 @@
 import subprocess
 
-from contentSelect.tableShort import table_short
-from downloadSelect.runner import run_yt_dlp
-from extractors.base import Extractor
+from vidphen.contentSelect.tableShort import table_short
+from vidphen.downloadSelect.runner import run_yt_dlp
+from vidphen.extractors.base import Extractor
 
 
 class YtDlpExtractor(Extractor):

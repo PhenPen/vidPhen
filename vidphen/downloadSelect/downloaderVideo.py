@@ -1,4 +1,4 @@
-from downloadSelect.runner import ask_base_dir, build_video_template, run_yt_dlp
+from vidphen.downloadSelect.runner import ask_base_dir, build_video_template, run_yt_dlp
 
 def _as_tuple(ID, extra_args=None):
     if isinstance(ID, tuple):

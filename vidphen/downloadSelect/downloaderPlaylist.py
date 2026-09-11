@@ -1,6 +1,6 @@
-from contentSelect.ui import prompt
-from contentSelect.validators import parse_items, parse_range
-from downloadSelect.runner import ask_base_dir, build_playlist_template, run_yt_dlp
+from vidphen.contentSelect.ui import prompt
+from vidphen.contentSelect.validators import parse_items, parse_range
+from vidphen.downloadSelect.runner import ask_base_dir, build_playlist_template, run_yt_dlp
 
 def _download_with_template(ID, url, extra_args, audio_extra=None, sub_mode="none", sub_args=None, base_dir=None):
     if base_dir is None:
