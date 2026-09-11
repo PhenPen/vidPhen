@@ -85,6 +85,9 @@ def _ask_another():
 
 
 def main():
+    from vidphen import __version__
+    from vidphen.contentSelect.ui import banner
+    banner(__version__)
     from vidphen.doctor import run_doctor
     run_doctor()
     # Video or Playlist selection, loop until user quits

@@ -97,7 +97,9 @@ def run_doctor():
     else:
         print("yt-dlp NOT FOUND - nothing can download without it")
     if ff_ok:
-        print(f"ffmpeg {ff_ver or ''} ok")
+        _ff_parsed = _parse_version(ff_ver or "")
+        _ff_short = ".".join(str(p) for p in _ff_parsed) if _ff_parsed else (ff_ver or "")
+        print(f"ffmpeg {_ff_short} ok")
     else:
         print("ffmpeg NOT FOUND - MP3 convert and video+audio merge won't work")
     close_section()
