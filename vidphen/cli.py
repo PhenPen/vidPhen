@@ -126,13 +126,35 @@ def main():
             else:
                 quality_scope, subs_scope = "all", "all"
             if quality_scope == "all":
-                ID = video.video(good[0])
-                from vidphen.contentSelect.quality import ask_fallback_policy, picked_height
+                from vidphen.contentSelect.quality import ask_fallback_policy, get_max_height, picked_height
+                while True:
+                    ID = video.video(good[0])
+                    _picked_fmt = ID[0] if isinstance(ID, tuple) else ID
+                    _picked = picked_height(_picked_fmt)
+                    if _picked is None or len(good) > 1:
+                        break
+                    print("Checking available quality...")
+                    _max = get_max_height(good[0])
+                    if not _max or _max >= _picked:
+                        break
+                    from vidphen.contentSelect.ui import close_section, open_section
+                    open_section()
+                    print(f"Picked: {_picked}p | Best available: {_max}p")
+                    print("1) Download lower quality instead")
+                    print("2) Pick quality again")
+                    while True:
+                        fc = ui.prompt("Pick 1-2 : ").strip()
+                        if fc in ("1", "2"):
+                            break
+                        print("Invalid Selection. Try again")
+                    close_section()
+                    if fc == "1":
+                        break
                 _picked_fmt = ID[0] if isinstance(ID, tuple) else ID
-                if picked_height(_picked_fmt) is None:
-                    fallback_policy = "auto"
-                else:
+                if len(good) > 1 and picked_height(_picked_fmt) is not None:
                     fallback_policy = ask_fallback_policy()
+                else:
+                    fallback_policy = "auto"
             else:
                 ID = None
                 fallback_policy = "auto"
