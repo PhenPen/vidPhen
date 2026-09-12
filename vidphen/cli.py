@@ -149,6 +149,7 @@ def main():
         if content == "S":
             _settings_menu()
             continue
+        if content == "V":
             if _ask_count("videos") == "one":
                 good, bad = _prompt_single_url("Enter video URL : ")
             else:
