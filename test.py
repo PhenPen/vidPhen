@@ -3,7 +3,7 @@ from vidphen.contentSelect.quality import ask_fallback_policy  # noqa: F401 (imp
 from vidphen.contentSelect.quality import build_options, get_format, picked_height
 from vidphen.contentSelect.validators import is_valid_format_id, is_valid_url, parse_items, parse_range, parse_url_list
 from vidphen.metaDataSelect.metaData import format_duration
-from vidphen.subtitleSelect.sub_langs import build_lang_options, lang_args_for_choice
+from vidphen.subtitleSelect.sub_langs import build_lang_options, lang_args_for_choice, resolve_default, resolve_lang
 from vidphen.doctor import _parse_version, check_python, instructions_for, update_available
 
 failures = []
@@ -73,6 +73,12 @@ check("subs menu hides missing german", not any("German" in l for l in _labels(_
 check("subs menu counts the rest", _lnote.startswith("1 more"))
 _lopts2, _ = build_lang_options({"manual": [], "auto": [], "unknown": False})
 check("subs empty lists default+custom only", len(_lopts2) == 2)
+
+# Subtitle variant resolution (fake availability, no network)
+check("variant en-orig resolves from en", resolve_lang("en", {"manual": ["en-orig"], "auto": [], "unknown": False}) == (["en-orig"], False))
+check("auto-only es gets auto flag", resolve_lang("es", {"manual": ["en"], "auto": ["es"], "unknown": False}) == (["es"], True))
+check("missing de is empty", resolve_lang("de", {"manual": ["en"], "auto": [], "unknown": False}) == ([], False))
+check("exact en preferred over variant", resolve_lang("en", {"manual": ["en-US", "en"], "auto": [], "unknown": False}) == (["en"], False))
 
 # Imports with no prompt on import (would hang waiting for input if broken)
 import vidphen.contentSelect.ui  # noqa: F401
