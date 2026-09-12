@@ -3,7 +3,7 @@ from vidphen.contentSelect.quality import ask_fallback_policy  # noqa: F401 (imp
 from vidphen.contentSelect.quality import build_options, get_format, picked_height
 from vidphen.contentSelect.validators import is_valid_format_id, is_valid_url, parse_items, parse_range, parse_url_list
 from vidphen.metaDataSelect.metaData import format_duration
-from vidphen.subtitleSelect.sub_langs import lang_args_for_choice
+from vidphen.subtitleSelect.sub_langs import build_lang_options, lang_args_for_choice
 from vidphen.doctor import _parse_version, check_python, instructions_for
 
 failures = []
@@ -63,6 +63,16 @@ check("NA unknown", format_duration("NA") == "unknown")
 check("lang 1 en", lang_args_for_choice("1") == ["--sub-langs", "en"])
 check("lang 5 auto", lang_args_for_choice("5") == [])
 check("lang bad None", lang_args_for_choice("9") is None)
+
+# Dynamic subtitle menu mapping (fake availability, no network)
+_labels = lambda opts: [label for label, _ in opts]
+_lopts, _lnote = build_lang_options({"manual": ["en", "fr", "it"], "auto": ["es"], "unknown": False})
+check("subs menu lists en/fr manual", _labels(_lopts)[0].endswith("[manual]") and _labels(_lopts)[1].endswith("[manual]"))
+check("subs menu tags es auto", "[auto-generated]" in _labels(_lopts)[2])
+check("subs menu hides missing german", not any("German" in l for l in _labels(_lopts)))
+check("subs menu counts the rest", _lnote.startswith("1 more"))
+_lopts2, _ = build_lang_options({"manual": [], "auto": [], "unknown": False})
+check("subs empty lists default+custom only", len(_lopts2) == 2)
 
 # Imports with no prompt on import (would hang waiting for input if broken)
 import vidphen.contentSelect.ui  # noqa: F401
