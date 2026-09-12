@@ -215,12 +215,12 @@ def main():
                 if subs_scope == "per":
                     print(f"Subtitles for video {i}/{len(good)}:")
                     cur_mode, cur_args = plan_subs(url)
-                from vidphen.contentSelect.quality import get_max_height, picked_height
+                from vidphen.contentSelect.quality import get_available, picked_height
                 _fmt = cur_ID[0] if isinstance(cur_ID, tuple) else cur_ID
                 _picked = picked_height(_fmt)
                 if _picked and fallback_policy in ("ask", "skip"):
                     print(f"Checking available quality ({i}/{len(good)})...")
-                    _max = get_max_height(url)
+                    _max = get_available(url).get("max_height")
                     if _max and _max < _picked:
                         if fallback_policy == "skip":
                             print(f"Skipped: best is {_max}p, picked {_picked}p")

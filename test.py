@@ -113,6 +113,31 @@ check("audio-only menu hides video presets", len(_oau) == 4 and not any("720p" i
 _ounk = build_options({"max_height": None, "has_video": True, "has_audio": True, "unknown": True})
 check("unknown menu falls back to full list", len(_ounk) == 12)
 
+# Late imports resolve (regression: batch loop once imported a deleted name,
+# which only crashed live since the import runs mid-flow, not at startup)
+import ast as _ast
+import importlib as _il
+import pathlib as _pl
+_missing = []
+for _f in list(_pl.Path("vidphen").rglob("*.py")):
+    _tree = _ast.parse(_f.read_text(encoding="utf-8"))
+    for _node in _ast.walk(_tree):
+        if (isinstance(_node, _ast.ImportFrom) and _node.module
+                and _node.module.startswith("vidphen")):
+            _mod = _il.import_module(_node.module)
+            for _a in _node.names:
+                if _a.name == "*":
+                    continue
+                if hasattr(_mod, _a.name):
+                    continue
+                try:
+                    _il.import_module(f"{_node.module}.{_a.name}")
+                except ImportError:
+                    _missing.append(f"{_f}:{_node.lineno} {_node.module}.{_a.name}")
+for _m in _missing:
+    print("MISSING " + _m)
+check("all late imports resolve", not _missing)
+
 print()
 if failures:
     print(f"{len(failures)} FAILED")
