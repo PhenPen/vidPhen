@@ -84,6 +84,55 @@ def _ask_another():
             print("Invalid Selection. Try again")
 
 
+def _settings_menu():
+    """View/change app settings. Returns when user picks Back."""
+    from vidphen.configSelect.config import _load_config, get_config_path
+    from vidphen.contentSelect.ui import close_section, open_section
+    while True:
+        open_section()
+        print("Settings")
+        print(f"Saved folder : {_load_config() or '(not set yet)'}")
+        print(f"Config file  : {get_config_path()}")
+        print("1) Change default download folder")
+        print("2) Open config file location")
+        print("3) Back")
+        choice = ui.prompt("Pick 1-3 : ").strip()
+        if choice == "1":
+            from vidphen.configSelect.config import set_default_location
+            raw = ui.prompt("Enter new default folder : ").strip().strip('"')
+            try:
+                saved = set_default_location(raw)
+            except OSError as e:
+                print(f"Could not use that folder: {e}")
+                close_section()
+                continue
+            print(f"Saved. New default: {saved}")
+            close_section()
+        elif choice == "2":
+            import os
+            import sys
+            path = get_config_path()
+            print(f"Config lives at: {path}")
+            try:
+                if sys.platform == "win32":
+                    os.startfile(path.parent)
+                elif sys.platform == "darwin":
+                    import subprocess
+                    subprocess.run(["open", path.parent])
+                else:
+                    import subprocess
+                    subprocess.run(["xdg-open", path.parent])
+            except OSError:
+                pass
+            close_section()
+        elif choice == "3":
+            close_section()
+            return
+        else:
+            print("Invalid Selection. Try again")
+            close_section()
+
+
 def main():
     from vidphen import __version__
     from vidphen.contentSelect.ui import banner
@@ -92,12 +141,14 @@ def main():
     run_doctor()
     # Video or Playlist selection, loop until user quits
     while True:
-        print("Enter V for Video and P for Playlist")
-        content = ui.prompt("Download Video or Playlist (or Q to quit) : ").upper()
+        print("Enter V for Video, P for Playlist, S for Settings")
+        content = ui.prompt("Download Video, Playlist, Settings (or Q to quit) : ").upper()
         if content == "Q":
             print("Bye!")
             return
-        if content == "V":
+        if content == "S":
+            _settings_menu()
+            continue
             if _ask_count("videos") == "one":
                 good, bad = _prompt_single_url("Enter video URL : ")
             else:
