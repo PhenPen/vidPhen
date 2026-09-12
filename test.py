@@ -1,6 +1,6 @@
 # Automated checks - no network, no prompts. Run: python test.py
 from vidphen.contentSelect.quality import ask_fallback_policy  # noqa: F401 (import check)
-from vidphen.contentSelect.quality import get_format, picked_height
+from vidphen.contentSelect.quality import build_options, get_format, picked_height
 from vidphen.contentSelect.validators import is_valid_format_id, is_valid_url, parse_items, parse_range, parse_url_list
 from vidphen.metaDataSelect.metaData import format_duration
 from vidphen.subtitleSelect.sub_langs import lang_args_for_choice
@@ -92,6 +92,16 @@ from vidphen.contentSelect.ui import BANNER, HEADER_LINE
 _banner_lines = [l for l in BANNER.splitlines() if l.strip()]
 check("banner is multi-line figlet art", len(_banner_lines) >= 5 and "___" in BANNER)
 check("header line tagged", "VIDPHEN" in HEADER_LINE)
+
+# Dynamic quality menu mapping (fake availability, no network)
+_labels = lambda opts: [label for label, _ in opts]
+_o720 = build_options({"max_height": 720, "has_video": True, "has_audio": True, "unknown": False})
+check("720p menu has 8 options", len(_o720) == 8)
+check("720p menu tops at 720p", "720p" in _labels(_o720)[1] and not any("1080p" in l or "4K" in l for l in _labels(_o720)))
+_oau = build_options({"max_height": None, "has_video": False, "has_audio": True, "unknown": False})
+check("audio-only menu hides video presets", len(_oau) == 4 and not any("720p" in l or "1080p" in l for l in _labels(_oau)))
+_ounk = build_options({"max_height": None, "has_video": True, "has_audio": True, "unknown": True})
+check("unknown menu falls back to full list", len(_ounk) == 12)
 
 print()
 if failures:
