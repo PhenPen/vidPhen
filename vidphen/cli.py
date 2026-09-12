@@ -141,15 +141,23 @@ def main():
     run_doctor()
     # Video or Playlist selection, loop until user quits
     while True:
-        print("Enter V for Video, P for Playlist, S for Settings")
-        content = ui.prompt("Download Video, Playlist, Settings (or Q to quit) : ").upper()
-        if content == "Q":
+        from vidphen.contentSelect.ui import close_section, open_section
+        open_section()
+        print("What do you want to do?")
+        print("1) Download videos")
+        print("2) Download playlists")
+        print("3) Check settings")
+        print("4) Quit")
+        content = ui.prompt("Pick 1-4 : ").strip().upper()
+        close_section()
+        content = {"V": "1", "P": "2", "S": "3", "Q": "4"}.get(content, content)
+        if content == "4":
             print("Bye!")
             return
-        if content == "S":
+        if content == "3":
             _settings_menu()
             continue
-        if content == "V":
+        if content == "1":
             if _ask_count("videos") == "one":
                 good, bad = _prompt_single_url("Enter video URL : ")
             else:
@@ -270,7 +278,7 @@ def main():
                 print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
             else:
                 print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
-        elif content == "P":
+        elif content == "2":
             if _ask_count("playlists") == "one":
                 good, bad = _prompt_single_url("Enter playlist URL : ")
             else:
