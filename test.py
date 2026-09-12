@@ -4,7 +4,7 @@ from vidphen.contentSelect.quality import build_options, get_format, picked_heig
 from vidphen.contentSelect.validators import is_valid_format_id, is_valid_url, parse_items, parse_range, parse_url_list
 from vidphen.metaDataSelect.metaData import format_duration
 from vidphen.subtitleSelect.sub_langs import build_lang_options, lang_args_for_choice
-from vidphen.doctor import _parse_version, check_python, instructions_for
+from vidphen.doctor import _parse_version, check_python, instructions_for, update_available
 
 failures = []
 
@@ -87,6 +87,10 @@ py_ok, py_cur, py_req = check_python()
 check("python check runs", isinstance(py_ok, bool) and py_cur and py_req == "3.9")
 check("yt-dlp instructions exist", len(instructions_for("yt-dlp")) > 0)
 check("ffmpeg instructions exist", len(instructions_for("ffmpeg")) > 0)
+check("update newer detected", update_available("2024.01.01", "2026.08.19"))
+check("update same is False", not update_available("2026.08.19", "2026.08.19"))
+check("update older is False", not update_available("2026.08.19", "2024.01.01"))
+check("update doubt is False", not update_available("", "2026.08.19") and not update_available("2026.08.19", None))
 
 # Packaging: installed dist matches source tree
 import vidphen

@@ -95,8 +95,9 @@ def _settings_menu():
         print(f"Config file  : {get_config_path()}")
         print("1) Change default download folder")
         print("2) Open config file location")
-        print("3) Back")
-        choice = ui.prompt("Pick 1-3 : ").strip()
+        print("3) Check for yt-dlp updates")
+        print("4) Back")
+        choice = ui.prompt("Pick 1-4 : ").strip()
         if choice == "1":
             from vidphen.configSelect.config import set_default_location
             raw = ui.prompt("Enter new default folder : ").strip().strip('"')
@@ -126,6 +127,10 @@ def _settings_menu():
                 pass
             close_section()
         elif choice == "3":
+            from vidphen.doctor import check_ytdlp_update
+            check_ytdlp_update()
+            close_section()
+        elif choice == "4":
             close_section()
             return
         else:

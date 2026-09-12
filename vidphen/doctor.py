@@ -147,3 +147,57 @@ def _resolve(tool, blocking):
             print("Continuing with limits.")
             return
         print("Invalid Selection. Try again")
+
+
+def latest_ytdlp_version(timeout=10):
+    """Newest yt-dlp on PyPI, or None if unreachable. Never raises."""
+    import json as _json
+    import urllib.request as _url
+    try:
+        with _url.urlopen("https://pypi.org/pypi/yt-dlp/json", timeout=timeout) as resp:
+            data = _json.load(resp)
+        return data.get("info", {}).get("version")
+    except Exception:
+        return None
+
+
+def update_available(installed, latest):
+    """Pure compare. True if latest is newer. False on any doubt."""
+    if not installed or not latest:
+        return False
+    inst, lat = _parse_version(installed), _parse_version(latest)
+    if not inst or not lat:
+        return False
+    return lat > inst
+
+
+def check_ytdlp_update():
+    """Settings entry: compare installed vs PyPI, offer update. Never crashes."""
+    from vidphen.contentSelect.ui import prompt
+    _, installed = check_tool("yt-dlp")
+    if not installed:
+        print("yt-dlp is not installed:")
+        for line in instructions_for("yt-dlp"):
+            print(f"  {line}")
+        return
+    print("Checking for updates (needs internet)...")
+    latest = latest_ytdlp_version()
+    if latest is None:
+        print("Couldn't reach the update server. Try again later.")
+        return
+    if not update_available(installed, latest):
+        print(f"yt-dlp is up to date ({installed}).")
+        return
+    print(f"Update available: {installed} -> {latest}")
+    while True:
+        choice = prompt("Update now? (y/n) : ").strip().upper()
+        if choice == "N":
+            return
+        elif choice == "Y":
+            break
+        print("Invalid Selection. Try again")
+    if auto_install("yt-dlp"):
+        _, new = check_tool("yt-dlp")
+        print(f"Updated. Now on {new or 'the new version'}.")
+    else:
+        print("Update failed. Try: pip install -U yt-dlp")
