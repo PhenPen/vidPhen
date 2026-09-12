@@ -199,7 +199,7 @@ def main():
                 ID = None
                 fallback_policy = "auto"
             if subs_scope == "all":
-                sub_mode, sub_args = plan_subs()
+                sub_mode, sub_args = plan_subs(good[0] if len(good) == 1 else None)
             else:
                 sub_mode, sub_args = "none", []
             base_dir = ask_base_dir()
@@ -214,7 +214,7 @@ def main():
                 cur_mode, cur_args = sub_mode, sub_args
                 if subs_scope == "per":
                     print(f"Subtitles for video {i}/{len(good)}:")
-                    cur_mode, cur_args = plan_subs()
+                    cur_mode, cur_args = plan_subs(url)
                 from vidphen.contentSelect.quality import get_max_height, picked_height
                 _fmt = cur_ID[0] if isinstance(cur_ID, tuple) else cur_ID
                 _picked = picked_height(_fmt)
@@ -307,7 +307,7 @@ def main():
             else:
                 ID = None
             if subs_scope == "all":
-                sub_mode, sub_args = plan_subs()
+                sub_mode, sub_args = plan_subs(good[0] if len(good) == 1 else None)
             else:
                 sub_mode, sub_args = "none", []
             if range_scope == "all":
@@ -327,7 +327,7 @@ def main():
                 cur_mode, cur_args = sub_mode, sub_args
                 if subs_scope == "per":
                     print(f"Subtitles for playlist {i}/{len(good)}:")
-                    cur_mode, cur_args = plan_subs()
+                    cur_mode, cur_args = plan_subs(url)
                 try:
                     rc = downloaderPlaylist.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope)
                 except Exception as e:
