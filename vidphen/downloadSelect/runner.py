@@ -7,6 +7,9 @@ from vidphen.contentSelect.ui import prompt
 
 PLAYLIST_SUBFOLDER = "%(playlist_title)s/%(playlist_index)s - %(title)s.%(ext)s"
 
+# Offered once per app run so batches don't nag per video.
+_UPDATE_OFFERED = False
+
 
 def ensure_yt_dlp():
     """Return True if yt-dlp is available, else print help and return False."""
@@ -66,6 +69,41 @@ def build_playlist_template(base_dir):
     return f'{base}/{PLAYLIST_SUBFOLDER}'
 
 
+def _offer_update_and_retry(args):
+    """Stale yt-dlp is the top cause of sudden failures. Offer update + one retry."""
+    import sys
+    global _UPDATE_OFFERED
+    _UPDATE_OFFERED = True
+    print("This can also mean an outdated yt-dlp (sites change often).")
+    while True:
+        choice = prompt("Update yt-dlp now and retry this download? (y/n) : ").strip().upper()
+        if choice == "N":
+            return None
+        elif choice == "Y":
+            break
+        print("Invalid Selection. Try again")
+    print("Updating yt-dlp...")
+    try:
+        updated = subprocess.run([sys.executable, "-m", "pip", "install", "-U", "yt-dlp"])
+    except FileNotFoundError:
+        print("Update failed. Try: pip install -U yt-dlp")
+        return None
+    if updated.returncode != 0:
+        print("Update failed. Try: pip install -U yt-dlp")
+        return None
+    print("Updated. Retrying once...")
+    try:
+        retried = subprocess.run(['yt-dlp'] + args, text=True)
+    except FileNotFoundError:
+        print("yt-dlp command not found after update.")
+        return None
+    if retried.returncode == 0:
+        print("Download Completed")
+    else:
+        print("Still failing after update - see causes above.")
+    return retried.returncode
+
+
 def run_yt_dlp(args):
     """Run yt-dlp with streaming output so progress is visible. Returns returncode or None."""
     if not ensure_yt_dlp():
@@ -86,4 +124,8 @@ def run_yt_dlp(args):
         print("- No internet or the site blocked the request (try again)")
         print("- File already exists and --no-overwrites skipped it (check folder)")
         print("- Picked format not available (try 1) Best)")
+        if not _UPDATE_OFFERED:
+            retried = _offer_update_and_retry(args)
+            if retried is not None:
+                return retried
     return result.returncode
