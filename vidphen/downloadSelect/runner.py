@@ -2,7 +2,7 @@ import pathlib
 import shutil
 import subprocess
 
-from vidphen.configSelect.config import default_location, set_default_location
+from vidphen.configSelect.config import default_location
 from vidphen.contentSelect.ui import prompt
 
 PLAYLIST_SUBFOLDER = "%(playlist_title)s/%(playlist_index)s - %(title)s.%(ext)s"
@@ -36,7 +36,7 @@ def needs_ffmpeg(args):
 
 
 def ask_base_dir():
-    """Prompt Default/Custom/Change-default and return a base directory path string."""
+    """Prompt Default once or Custom folder. Change-default lives in Settings."""
     try:
         from vidphen.configSelect.config import _load_config
         current = _load_config()
@@ -45,7 +45,7 @@ def ask_base_dir():
     if current:
         print(f"Saved folder: {current}")
     while True:
-        choice = prompt("Save to Default (D), Custom once (C), Change default (S)? : ").upper()
+        choice = prompt("Save to Default (D) or Custom once (C)? : ").upper()
         if choice in ("D", "Y"):
             return default_location()
         elif choice in ("C", "N"):
@@ -53,9 +53,6 @@ def ask_base_dir():
             path = pathlib.Path(raw).expanduser()
             path.mkdir(parents=True, exist_ok=True)
             return str(path)
-        elif choice == "S":
-            raw = prompt("Enter new default folder : ").strip().strip('"')
-            return set_default_location(raw)
         else:
             print("Invalid Selection. Try again")
 

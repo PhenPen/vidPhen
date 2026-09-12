@@ -22,7 +22,7 @@ OPTIONS = [
      "bv*[height<=360][ext=mp4][vcodec^=avc1]+ba/b[height<=360][ext=mp4]/bv*[height<=360]+ba/b[height<=360]/b/best"),
     ("8", "240p/144p - tiny",
      "bv*[height<=240][ext=mp4][vcodec^=avc1]+ba/b[height<=240][ext=mp4]/bv*[height<=240]+ba/b[height<=240]/b/best"),
-    ("9", "Audio - choose type next",
+    ("9", "Audio only",
      "AUDIO_ASK"),
     ("10", "Audio original quick (no convert)",
      "bestaudio/best"),
