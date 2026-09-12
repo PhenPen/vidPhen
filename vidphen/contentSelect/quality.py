@@ -41,6 +41,21 @@ _AUDIO_OPTIONS = [
 
 _FORMATS = {choice: fmt for choice, _, fmt in OPTIONS}
 
+# Height cap per video preset choice. None = Best (no cap).
+_HEIGHTS = {
+    "1": None,
+    "2": 2160,
+    "3": 1440,
+    "4": 1080,
+    "5": 720,
+    "6": 480,
+    "7": 360,
+    "8": 240,
+    "11": 4320,
+}
+
+_AVAIL_CACHE = {}
+
 
 def show_menu():
     from vidphen.contentSelect.ui import close_section, open_section
@@ -67,31 +82,103 @@ def picked_height(fmt):
     return int(m.group(1)) if m else None
 
 
-def get_max_height(url):
-    """Best-effort max available height for a video. None if unknown."""
+def get_available(url):
+    """One lookup: {max_height|None, has_video, has_audio, unknown}.
+
+    Results cached per URL for the run so menus and fallback checks
+    never pay for the same lookup twice.
+    """
     import re as _re
     from vidphen.contentSelect.tableShort import parse_formats, table_short
+    if url in _AVAIL_CACHE:
+        return _AVAIL_CACHE[url]
     table = table_short(url, quiet=True)
     if not table:
-        return None
-    heights = []
+        avail = {"max_height": None, "has_video": True, "has_audio": True, "unknown": True}
+        _AVAIL_CACHE[url] = avail
+        return avail
+    heights, has_video, has_audio = [], False, False
     for entry in parse_formats(table):
-        res = entry.get("resolution", "")
-        m = _re.search(r"(\d{3,4})[x×](\d{3,4})", res)
+        text = f"{entry.get('resolution', '')} {entry.get('note', '')}"
+        if "audio" in text.lower():
+            has_audio = True
+        m = _re.search(r"(\d{3,4})[x×](\d{3,4})", text)
         if m:
             try:
                 heights.append(int(m.group(2)))
+                has_video = True
                 continue
             except ValueError:
                 pass
-        m = _re.search(r"\b(\d{3,4})p\d?\b", res + " " + entry.get("note", ""))
+        m = _re.search(r"\b(\d{3,4})p\d?\b", text)
         if m:
             try:
                 heights.append(int(m.group(1)))
+                has_video = True
             except ValueError:
                 pass
     heights = [h for h in heights if 100 <= h <= 4320]
-    return max(heights) if heights else None
+    if heights:
+        has_video = True
+    if not has_video and not has_audio:
+        has_video, has_audio = True, True
+    avail = {
+        "max_height": max(heights) if heights else None,
+        "has_video": has_video,
+        "has_audio": has_audio,
+        "unknown": False,
+    }
+    _AVAIL_CACHE[url] = avail
+    return avail
+
+
+def _option_kind(choice, fmt):
+    if choice == "9":
+        return ("audio_ask",)
+    if choice == "10":
+        return ("audio_orig",)
+    return ("fmt", fmt)
+
+
+def build_options(avail):
+    """Compact menu mapping for an availability dict.
+
+    Returns list of (label, kind) where kind is ("fmt", id),
+    ("audio_ask",), ("audio_orig",) or ("advanced",). Pure (testable).
+    """
+    if avail.get("unknown"):
+        items = [(label, _option_kind(choice, fmt)) for choice, label, fmt in OPTIONS]
+        items.append(("Advanced - type ID yourself", ("advanced",)))
+        return items
+    if not avail.get("has_video", True):
+        return [
+            ("Best (auto)", ("fmt", _FORMATS["1"])),
+            ("Audio - choose type next", ("audio_ask",)),
+            ("Audio original quick (no convert)", ("audio_orig",)),
+            ("Advanced - type ID yourself", ("advanced",)),
+        ]
+    max_h = avail.get("max_height")
+    items = []
+    for choice, label, fmt in OPTIONS:
+        cap = _HEIGHTS.get(choice)
+        if choice == "1" or (cap is not None and (max_h is None or cap <= max_h)):
+            items.append((label, ("fmt", fmt)))
+        elif choice in ("9", "10"):
+            items.append((label, _option_kind(choice, fmt)))
+    items.append(("Advanced - type ID yourself", ("advanced",)))
+    return items
+
+
+def show_options(options, note=""):
+    """Print a compact numbered menu. Returns {number: kind}."""
+    from vidphen.contentSelect.ui import open_section
+    open_section()
+    print("What quality?" + (f" ({note})" if note else ""))
+    mapping = {}
+    for i, (label, kind) in enumerate(options, 1):
+        print(f"{i}) {label}")
+        mapping[str(i)] = kind
+    return mapping
 
 
 def show_audio_menu():
