@@ -92,9 +92,11 @@ def plan_subs(url=None):
         elif choice in ("2", "3"):
             mode = "with" if choice == "2" else "only"
             if url is not None:
-                dyn = _pick_language_dynamic(url)
-                if dyn is not None:
+                action, dyn = _pick_language_dynamic(url)
+                if action == "ok":
                     return (mode, dyn)
+                elif action == "skip":
+                    return ("none", [])
             lang_args = _pick_language()
             lang_args = lang_args + _ask_auto_captions()
             return (mode, lang_args)
@@ -102,12 +104,93 @@ def plan_subs(url=None):
 
 
 _SUB_CACHE = {}
+_LANG_CACHE = {}
 
 _PRIORITY = [("en", "English"), ("fr", "French"), ("es", "Spanish"), ("de", "German")]
 
 
 def _base(code):
     return str(code).lower().replace("_", "-").split("-")[0]
+
+
+def resolve_lang(requested, subs):
+    """Map a requested code to exact available keys. Pure (testable).
+
+    Returns (keys, needs_auto). keys empty = not available anywhere.
+    Exact base match wins; otherwise first variant. Manual preferred.
+    """
+    want = _base(requested)
+    manual = [c for c in subs.get("manual", []) if _base(c) == want]
+    if manual:
+        exact = [c for c in manual if c.lower() == want]
+        return (exact or sorted(manual)[:1], False)
+    auto = [c for c in subs.get("auto", []) if _base(c) == want]
+    if auto:
+        exact = [c for c in auto if c.lower() == want]
+        return (exact or sorted(auto)[:1], True)
+    return ([], False)
+
+
+def video_language(url):
+    """Video's own language code, or None. Cached per URL."""
+    import subprocess
+    if url in _LANG_CACHE:
+        return _LANG_CACHE[url]
+    try:
+        result = subprocess.run(
+            ['yt-dlp', '--skip-download', '--print', '%(language)s', url],
+            capture_output=True, text=True)
+    except FileNotFoundError:
+        _LANG_CACHE[url] = None
+        return None
+    if result.returncode != 0:
+        _LANG_CACHE[url] = None
+        return None
+    for line in (result.stdout or "").splitlines():
+        line = line.strip()
+        if line and not line.startswith("[") and line.lower() not in ("na", "none"):
+            _LANG_CACHE[url] = line
+            return line
+    _LANG_CACHE[url] = None
+    return None
+
+
+def resolve_default(subs, url):
+    """Default language: video's own language, else English. Pure-ish (cached lookup)."""
+    lang = video_language(url) if url else None
+    for candidate in ([lang] if lang else []) + ["en"]:
+        keys, needs_auto = resolve_lang(candidate, subs)
+        if keys:
+            return (keys, needs_auto, candidate)
+    return ([], False, None)
+
+
+def _none_here(requested, subs):
+    """Tell the user nothing exists. Returns 'retry' or 'skip'."""
+    from vidphen.contentSelect.ui import close_section, open_section, prompt
+    have = sorted({_base(c).upper() for c in subs.get("manual", []) + subs.get("auto", [])})
+    open_section()
+    print(f"No {requested} subtitles exist for this video" + (f" (has: {', '.join(have)})" if have else ""))
+    print("1) Pick another language")
+    print("2) Continue without subtitles")
+    while True:
+        choice = prompt("Pick 1-2 : ").strip()
+        if choice == "1":
+            close_section()
+            return "retry"
+        elif choice == "2":
+            close_section()
+            return "skip"
+        print("Invalid Selection. Try again")
+
+
+def _flags_for(keys, needs_auto):
+    args = []
+    if keys:
+        args += ["--sub-langs", ",".join(keys)]
+    if needs_auto:
+        args.append("--write-automatic-subs")
+    return args
 
 
 def get_sub_langs(url):
@@ -186,18 +269,22 @@ def show_lang_options(entries, note=""):
 
 
 def _pick_language_dynamic(url):
-    """Dynamic pick. Returns lang_args, or None if lookup failed."""
+    """Dynamic pick. Returns (action, lang_args).
+
+    action: 'ok' (use args), 'skip' (continue without subtitles),
+    'static' (lookup failed - use old static path).
+    """
     from vidphen.contentSelect.ui import close_section, prompt
     subs = get_sub_langs(url)
     if subs.get("unknown"):
-        return None
+        return ("static", [])
     if not subs.get("manual") and not subs.get("auto"):
-        print("This video has no subtitles in any language.")
-        return []
-    entries, note = build_lang_options(subs)
-    mapping = show_lang_options(entries, note)
-    top = str(len(mapping))
+        print("This video has no subtitles in any language. Continuing without.")
+        return ("skip", [])
     while True:
+        entries, note = build_lang_options(subs)
+        mapping = show_lang_options(entries, note)
+        top = str(len(mapping))
         sel = prompt(f"Pick 1-{top} : ").strip()
         kind = mapping.get(sel)
         if kind is None:
@@ -208,13 +295,27 @@ def _pick_language_dynamic(url):
             if not lang:
                 print("Invalid Selection. Try again")
                 continue
+            keys, needs_auto = resolve_lang(lang, subs)
+            if not keys:
+                if _none_here(lang, subs) == "retry":
+                    close_section()
+                    continue
+                close_section()
+                return ("skip", [])
             close_section()
-            return ["--sub-langs", lang, "--write-automatic-subs"]
+            return ("ok", _flags_for(keys, needs_auto))
         close_section()
         if kind[0] == "default":
-            return []
+            keys, needs_auto, _ = resolve_default(subs, url)
+            if not keys:
+                if _none_here("default", subs) == "retry":
+                    continue
+                return ("skip", [])
+            return ("ok", _flags_for(keys, needs_auto))
         _, code, is_manual = kind
-        args = ["--sub-langs", code]
-        if not is_manual:
-            args.append("--write-automatic-subs")
-        return args
+        keys, needs_auto = resolve_lang(code, subs)
+        if not keys:
+            if _none_here(code, subs) == "retry":
+                continue
+            return ("skip", [])
+        return ("ok", _flags_for(keys, needs_auto))
