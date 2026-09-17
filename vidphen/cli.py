@@ -109,21 +109,28 @@ def _ask_next(base_dir=None, files=None):
             unique.append(f)
     files = unique
     has_folder = bool(base_dir)
+    # Sequential numbers rebuild each loop so there is never a gap:
+    # quit is 2/3/4 depending on what is offered.
+    opts = [("1", "Download another")]
+    if has_folder:
+        opts.append((str(len(opts) + 1), "Open download folder"))
+    if files:
+        opts.append((str(len(opts) + 1), "Open downloaded file"))
+    quit_num = str(len(opts) + 1)
+    folder_num = next((n for n, label in opts if label == "Open download folder"), None)
+    file_num = next((n for n, label in opts if label == "Open downloaded file"), None)
     while True:
         print("What next?")
-        print("1) Download another")
-        if has_folder:
-            print("2) Open download folder")
-        if files:
-            print("3) Open downloaded file")
-        print("4) Quit")
-        choice = ui.prompt("Pick 1-4 : ").strip().upper()
+        for num, label in opts:
+            print(f"{num}) {label}")
+        print(f"{quit_num}) Quit")
+        choice = ui.prompt(f"Pick 1-{quit_num} : ").strip().upper()
         if choice == "1" or choice == "Y":
             return True
-        elif choice == "2" and has_folder:
+        elif choice == folder_num and has_folder:
             open_folder(base_dir)
             continue
-        elif choice == "3" and files:
+        elif choice == file_num and files:
             if len(files) == 1:
                 open_path(files[0])
             else:
@@ -131,10 +138,24 @@ def _ask_next(base_dir=None, files=None):
                 if picked:
                     open_path(picked)
             continue
-        elif choice == "4" or choice == "N":
+        elif choice == quit_num or choice == "4" or choice == "N":
             print("Bye!")
             return False
         print("Invalid Selection. Try again")
+
+
+def _report_done(ok, failed, skipped, unverified, total):
+    """Honest end-of-batch summary.
+
+    rc 0 with no captured file is reported as unverified (not ok),
+    so counts never claim success with nothing to open.
+    """
+    parts = [f"{ok} ok", f"{failed} failed"]
+    if skipped:
+        parts.append(f"{skipped} skipped")
+    if unverified:
+        parts.append(f"{unverified} completed but file not located - check folder")
+    print(f"Done: {', '.join(parts)} out of {total}")
 
 
 def _settings_menu():
@@ -226,7 +247,7 @@ def _handle_subtitles_videos():
         return True
     base_dir = ask_base_dir()
     titles = {url: (info["title"] if info else url) for url, info in infos}
-    ok, failed, skipped = 0, 0, 0
+    ok, failed, skipped, unverified = 0, 0, 0, 0
     all_files = []
     for i, url in enumerate(good, 1):
         print(f"--- Subtitles {i}/{len(good)}: {titles.get(url, url)} ---")
@@ -244,14 +265,14 @@ def _handle_subtitles_videos():
             print(f"Video {i} failed: {e}")
             rc, files = 1, []
         if rc == 0:
-            ok += 1
-            all_files += files
+            if files:
+                ok += 1
+                all_files += files
+            else:
+                unverified += 1
         else:
             failed += 1
-    if skipped:
-        print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
-    else:
-        print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
+    _report_done(ok, failed, skipped, unverified, len(good))
     return _ask_next(base_dir, all_files)
 
 
@@ -311,7 +332,7 @@ def _handle_subtitles_playlists():
         scope = None
     base_dir = ask_base_dir()
     titles = {url: (info["title"] if info else url) for url, info in pl_infos}
-    ok, failed, skipped = 0, 0, 0
+    ok, failed, skipped, unverified = 0, 0, 0, 0
     all_files = []
     for i, url in enumerate(good, 1):
         print(f"--- Playlist {i}/{len(good)}: {titles.get(url, url)} ---")
@@ -329,14 +350,14 @@ def _handle_subtitles_playlists():
             print(f"Playlist {i} failed: {e}")
             rc, files = 1, []
         if rc == 0:
-            ok += 1
-            all_files += files
+            if files:
+                ok += 1
+                all_files += files
+            else:
+                unverified += 1
         else:
             failed += 1
-    if skipped:
-        print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
-    else:
-        print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
+    _report_done(ok, failed, skipped, unverified, len(good))
     return _ask_next(base_dir, all_files)
 
 

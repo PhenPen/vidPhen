@@ -1,6 +1,9 @@
 import pathlib
+import re
 import shutil
 import subprocess
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 from vidphen.configSelect.config import default_location
 from vidphen.contentSelect.ui import prompt
@@ -66,9 +69,15 @@ def build_playlist_template(base_dir):
     return f'{base}/{PLAYLIST_SUBFOLDER}'
 
 
-def _collect_file_line(line):
-    """yt-dlp --print after_move:filepath line -> absolute path or None. Pure."""
-    text = (line or "").strip().strip('"').strip("'")
+def _collect_file_line(line, base_dir=None):
+    """yt-dlp --print filepath line -> absolute path or None. Pure.
+
+    Tolerates ANSI colours, surrounding quotes, and `\\\\?\\`-prefixed
+    Windows paths. Relative prints resolve against base_dir/cwd.
+    """
+    text = _ANSI_RE.sub("", line or "").strip().strip('"').strip("'").strip()
+    if text.startswith("\\\\?\\"):
+        text = text[4:]
     if not text or text.startswith("["):
         return None
     try:
@@ -76,6 +85,10 @@ def _collect_file_line(line):
     except Exception:
         return None
     try:
+        if not p.is_absolute() and base_dir:
+            cand = pathlib.Path(str(base_dir)).expanduser() / p
+            if cand.is_file():
+                return str(cand.resolve())
         if p.is_file():
             return str(p.resolve())
     except OSError:
@@ -83,12 +96,26 @@ def _collect_file_line(line):
     return None
 
 
+def _looks_like_url(s):
+    s = str(s)
+    return bool(s) and not s.startswith("-") and ("." in s)
+
+
 def _print_args(args):
-    """Append filepath print so exact files can be opened later."""
+    """Insert filepath prints BEFORE the trailing URL so yt-dlp emits them.
+
+    Appending `--print` after the URL applies to "the next URL" (none)
+    on some versions, yielding rc 0 with zero captured paths. Both
+    `after_move:filepath` (media) and `filepath` (subs-only
+    `--skip-download`) are requested.
+    """
     full = list(args)
-    if "--print" not in full:
-        full = full + ["--print", "after_move:filepath"]
-    return full
+    if "--print" in full:
+        return full
+    prints = ["--print", "after_move:filepath", "--print", "filepath"]
+    if full and _looks_like_url(full[-1]):
+        return full[:-1] + prints + full[-1:]
+    return full + prints
 
 
 def _offer_update_and_retry(args, _run):
