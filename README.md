@@ -1,145 +1,125 @@
-# PhenTube
+Vidphen
 
-A simple, interactive command-line tool for downloading YouTube videos and playlists with flexible format selection and subtitle support.
+An interactive terminal downloader for videos, playlists, and subtitles only. Thin wrapper over `yt-dlp` (+ `ffmpeg` for merges/converts).
+
+YouTube first, but any public link is accepted (public Vimeo / LinkedIn posts etc. via `yt-dlp`). 
 
 ## Features
 
-- **Video & Playlist Downloads** - Download single videos or entire playlists from YouTube
-- **Flexible Quality Selection** - Choose automatic best quality or manually select video/audio format
-- **Subtitle Support** - Download subtitles in default or custom languages
-- **Custom Download Locations** - Configure where your downloads are saved
-- **Interactive CLI** - User-friendly command-line interface with clear prompts
-- **Format Control** - Choose between combined files (video+audio) or separate streams
+- **Videos, playlists, subtitles-only** — `1) Download videos 2) Download playlists 3) Download subtitles only`
+- **One or many URLs** — paste one per line (empty line finishes); commas work too; invalid links reported, duplicates dropped
+- **Preview before download** — titles + durations for videos, title + count for playlists, then `Download these N? (y/n)`
+- **Dynamic quality menu** — built from the video's actual formats: `Best (auto, MP4 if possible)`, `2160p / 1440p / 1080p / 720p / 480p / 360p / tiny`, `Audio only (mp3 / m4a / opus / wav / flac / original)`, `8K (rare)`, `Advanced -type ID yourself (eg 247+250)`
+- **Dynamic subtitle menu** — built from manual + auto generated captions; `1) No subtitles 2) Video + subtitles` (video/playlist flows); subs only flow picks language only; auto captions fallback offered
+- **Batch control** — `Same for all` vs `Pick per video` for quality/subs (and video range for playlists); picked quality fallback `Auto use best below / Ask me / Skip`
+- **Playlist scope** — `E) Everything R) Range (eg 2-19) S) Specific (eg 1,4,6)`
+- **What next + open** — after `Done: X ok, Y failed`:
+  ```
+  1) Download another
+  2) Open download folder
+  3) Open downloaded file
+  4) Quit
+  ```
+  Single file opens directly; playlists/batches show a numbered pick list (`1) name … 0) Back`, first 50 shown)
+- **Doctor + updates** — startup check for `Python / yt-dlp / ffmpeg` with install help or auto install; `Settings → Check for yt-dlp updates`; one update and retry offer per run on failure
 
 ## Prerequisites
 
-- Python 3.x
-- `yt-dlp` - YouTube downloader library
+- Python `>= 3.9`
 - Internet connection
+- `ffmpeg` for video+audio merges (`1080p+`) and audio converts (`mp3/m4a/opus/wav/flac`). `Best` and audio original often work without it — the app warns before downloading a broken file.
 
 ## Installation
 
-1. **Clone or download this project**
-   ```bash
-   git clone <repository-url>
-   cd phenTube
-   ```
+```bash
+git clone https://github.com/PhenPen/vidPhen.git
+cd vidPhen
+pip install -e .
+```
 
-2. **Install dependencies**
-   ```bash
-   pip install yt-dlp
-   ```
+Run (primary):
 
-3. **Run the application**
-   ```bash
-   python yT.py
-   ```
+```bash
+vidphen
+```
+
+Alternatives:
+
+```bash
+python -m vidphen   # same app, no console script needed
+python yT.py        # local-dev shim, calls vidphen.cli:main
+```
+
+No clone (install from GitHub directly):
+
+```bash
+pip install git+https://github.com/PhenPen/vidPhen.git
+vidphen
+```
+
+First run asks for your default download folder and checks `yt-dlp` / `ffmpeg`.
 
 ## Usage
 
-### Quick Start
-
-```bash
-python yT.py
-```
-
-Follow the prompts:
-1. Enter **V** for Video or **P** for Playlist
-2. Paste the YouTube URL
-3. Select quality option:
-   - **B** for best quality (automatic)
-   - **S** to manually select format
-4. Choose subtitle preferences
-
-### Download Examples
-
-**Download a single video in best quality:**
-```
-Enter V for Video and P for Playlist: V
-Enter Youtube Video URL: https://www.youtube.com/watch?v=...
-Download best quality format(B) or select for format personally(S): B
-Do you want subtitles (y/n): Y
-```
-
-**Download a playlist with custom format:**
-```
-Enter V for Video and P for Playlist: P
-Enter Youtube Playlist URL: https://www.youtube.com/playlist?list=...
-Download best quality for all playlist videos(B) or select format personally(S): S
-Download video and audio file together or a single file: T
-Select a video and audio file using ID: 247+250
-```
-
-**Download with subtitles in multiple languages:**
-```
-Do you want subtitles (y/n): Y
-Enter D for default subs and A for another language: A
-[List of available subtitles displayed]
-Enter language from options: en,fr,es
-```
-
-## Project Structure
+Main menu (`Pick 1-5`, shortcuts `V`ideos / `P`laylists / `D` or `T` subs / `S`ettings / `Q`uit):
 
 ```
-phenTube/
-├── yT.py                          # Main entry point
-│
-├── contentSelect/                 # Content type selection logic
-│   ├── __init__.py
-│   ├── video.py                   # Single video handling
-│   └── playlist.py                # Playlist handling
-│
-├── downloadSelect/                # Download execution logic
-│   ├── __init__.py
-│   ├── downloaderVideo.py         # Downloads individual videos
-│   └── downloaderPlaylist.py      # Downloads entire playlists
-│
-├── configSelect/                  # Configuration management
-│   ├── __init__.py
-│   └── config.py                  # Download location configuration
-│
-├── subtitleSelect/                # Subtitle handling
-│   ├── __init__.py
-│   ├── subsVideo.py               # Subtitles for videos
-│   └── subsPlaylist.py            # Subtitles for playlists
-│
-├── metaDataSelect/                # Metadata features (coming soon)
-│   ├── __init__.py
-│   └── metaData.py
-│
-└── README.md                       # This file
+What do you want to do?
+1) Download videos
+2) Download playlists
+3) Download subtitles only
+4) Check settings
+5) Quit
+```
+
+**Videos:** `1 → How many? 1) One 2) Multiple → Enter URL(s) → preview → Download these N? → Quality (same/per) → Subtitles (same/per) → Save Default/Custom → Done → What next 1-4`
+
+**Playlists:** `2 → one/many → preview title + count → Download these N? → Quality / Subtitles / Video range (same/per) → E/R/S scope when per-playlist → Done → What next 1-4`
+
+**Subtitles only:** `3 → 1) Videos 2) Playlists → URLs → preview → language pick (no quality prompt) → Done → What next 1-4` (outputs `.vtt/.srt` via `--write-subs --skip-download`)
+
+**Shortcuts:** video quality `1` = Best auto; audio path picks type next; `Advanced` accepts raw IDs (`250`, `247+250`).
+
+## Settings
+
+`4) Check settings`:
+
+```
+1) Change default download folder
+2) Open config file location
+3) Check for yt-dlp updates
+4) Back
 ```
 
 ## Configuration
 
-### First Time Setup
-On first run, you'll be prompted to enter your default download location:
-```
-Enter default location for downloads: C:\Users\YourUsername\Downloads
-```
+Stored at `~/.config/phenTube/config.json`:
 
-### Configuration File
-The configuration is stored at:
-```
-C:\Users\HP\AppData\Roaming\yt-dlp\config.txt
+```json
+{ "download_dir": "C:/Users/You/Downloads" }
 ```
 
-**Example config.txt:**
+Old Windows `AppData/Roaming/yt-dlp/config.txt` installs are migrated automatically. To reset, use `Settings → Change default download folder`. Per run you can still pick `Save Default (D) or Custom once (C)`.
+
+Output names: videos `%(title)s.%(ext)s`, playlists `%(playlist_title)s/%(playlist_index)s - %(title)s.%(ext)s`, with `--no-overwrites --continue --windows-filenames`.
+
+## Project Structure
+
 ```
-# Save downloads to Downloads folder
--o "C:\Users\HP\Downloads\%(title)s.%(ext)s"
+vidPhen/
+├── yT.py                        # Dev shim -> vidphen.cli:main
+├── pyproject.toml               # Package vidphen 1.0, console script vidphen
+├── requirements.txt             # yt-dlp>=2023.0.0 (mirrors pyproject)
+├── test.py                      # Offline checks, no prompts: python test.py
+├── vidphen/
+│   ├── __init__.py  __main__.py  cli.py  doctor.py
+│   ├── contentSelect/   # ui, validators, quality, video, playlist, tableShort
+│   ├── downloadSelect/  # runner (capture + open), downloaderVideo, downloaderPlaylist
+│   ├── subtitleSelect/  # sub_langs (dynamic menus, resolve_lang/default)
+│   ├── configSelect/    # config (JSON path + legacy migration)
+│   ├── metaDataSelect/  # metaData (preview fetch, format_duration)
+│   └── extractors/      # base + ytdlp_extractor (yt-dlp CLI wrapper)
 ```
-
-To change the download location, simply delete this file and run the application again.
-
-## Format Selection
-
-When you choose to manually select format (**S** option), the tool displays available formats using `yt-dlp -F`.
-
-**Format Selection Tips:**
-- **Best Combined Format:** Single file with video and audio merged (larger file, easier to use)
-- **Separate Streams:** Video and audio as separate files (more control, requires merging)
-- **Format IDs:** Use the ID numbers shown (e.g., `247` or `247+250` for video+audio)
 
 ## Requirements
 
@@ -147,33 +127,22 @@ When you choose to manually select format (**S** option), the tool displays avai
 yt-dlp>=2023.0.0
 ```
 
-Install with:
-```bash
-pip install yt-dlp
-```
+Install with `pip install -e .` (pulls `yt-dlp`) plus `ffmpeg` separately:
 
-## Troubleshooting
+- Windows: `winget install Gyan.FFmpeg` (then open a NEW terminal)
+- macOS: `brew install ffmpeg`
+- Linux: `sudo apt install ffmpeg`
 
-**Q: "yt-dlp command not found"**
-- A: Install yt-dlp: `pip install yt-dlp`
-
-**Q: Downloads not saving to the right location**
-- A: Delete the config file at `C:\Users\HP\AppData\Roaming\yt-dlp\config.txt` and run again to reconfigure
-
-**Q: "Invalid URL" error**
-- A: Make sure you're using a valid YouTube video or playlist URL
-
-**Q: Subtitle download fails**
-- A: Some videos may not have subtitles available. Try manually checking on YouTube first.
+Check health: `python test.py` (offline, no prompts).
 
 ## License
 
-[Unlicensed for Now]
+[Unlicensed for Now — license to be added later. All rights reserved.]
 
 ## Contributing
 
-We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) before submitting a pull request.
+Issues and pull requests welcome via GitHub. No separate contributing guide yet.
 
 ---
 
-**Note:** This tool is designed for personal use. Always respect copyright and usage rights when downloading content from YouTube.
+**Note:** For personal use. Always respect copyright and usage rights when downloading.
