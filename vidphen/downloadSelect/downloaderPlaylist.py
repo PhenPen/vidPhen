@@ -1,8 +1,9 @@
 from vidphen.contentSelect.ui import prompt
 from vidphen.contentSelect.validators import parse_items, parse_range
-from vidphen.downloadSelect.runner import ask_base_dir, build_playlist_template, run_yt_dlp
+from vidphen.downloadSelect.runner import ask_base_dir, build_playlist_template, run_yt_dlp_capture
 
 def _download_with_template(ID, url, extra_args, audio_extra=None, sub_mode="none", sub_args=None, base_dir=None):
+    """Download playlist items. Returns (returncode|None, files[])."""
     if base_dir is None:
         base_dir = ask_base_dir()
     download_template = build_playlist_template(base_dir)
@@ -13,10 +14,10 @@ def _download_with_template(ID, url, extra_args, audio_extra=None, sub_mode="non
     if ID == "bestaudio" and not audio_extra:
         audio_extra = ["--extract-audio", "--audio-format", "mp3"]
     if sub_mode == "only":
-        return run_yt_dlp(['--write-subs', '--skip-download', '--ignore-errors']
+        return run_yt_dlp_capture(['--write-subs', '--skip-download', '--ignore-errors']
                      + sub_args + ["-o", download_template] + extra_args + [url])
     sub_flags = (['--write-subs'] + sub_args) if sub_mode == "with" else []
-    return run_yt_dlp(['-f', ID, "-o", download_template] + audio_extra + sub_flags + extra_args + [url])
+    return run_yt_dlp_capture(['-f', ID, "-o", download_template] + audio_extra + sub_flags + extra_args + [url])
 
 
 def _scope_to_args(scope):
@@ -94,8 +95,8 @@ def downloader(ID, url, sub_mode="none", sub_args=None, base_dir=None, scope=Non
             if playlistIndexSpecifics is None:
                 print("Invalid list. Use format eg 1,4,6 with numbers only")
                 break
-            _download_with_template(ID, url, ["--ignore-errors", "--playlist-items", playlistIndexSpecifics, "--no-overwrites", "--windows-filenames"], sub_mode=sub_mode, sub_args=sub_args, base_dir=base_dir)
-            return
+            return _download_with_template(ID, url, ["--ignore-errors", "--playlist-items", playlistIndexSpecifics, "--no-overwrites", "--windows-filenames"], sub_mode=sub_mode, sub_args=sub_args, base_dir=base_dir)
         else:
             print("Invalid selection. Try again")
             break
+    return (None, [])

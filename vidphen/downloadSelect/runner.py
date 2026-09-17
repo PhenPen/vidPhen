@@ -66,7 +66,32 @@ def build_playlist_template(base_dir):
     return f'{base}/{PLAYLIST_SUBFOLDER}'
 
 
-def _offer_update_and_retry(args):
+def _collect_file_line(line):
+    """yt-dlp --print after_move:filepath line -> absolute path or None. Pure."""
+    text = (line or "").strip().strip('"').strip("'")
+    if not text or text.startswith("["):
+        return None
+    try:
+        p = pathlib.Path(text).expanduser()
+    except Exception:
+        return None
+    try:
+        if p.is_file():
+            return str(p.resolve())
+    except OSError:
+        return None
+    return None
+
+
+def _print_args(args):
+    """Append filepath print so exact files can be opened later."""
+    full = list(args)
+    if "--print" not in full:
+        full = full + ["--print", "after_move:filepath"]
+    return full
+
+
+def _offer_update_and_retry(args, _run):
     """Stale yt-dlp is the top cause of sudden failures. Offer update + one retry."""
     import sys
     global _UPDATE_OFFERED
@@ -90,30 +115,45 @@ def _offer_update_and_retry(args):
         return None
     print("Updated. Retrying once...")
     try:
-        retried = subprocess.run(['yt-dlp'] + args, text=True)
+        rc, files = _run(_print_args(args))
     except FileNotFoundError:
         print("yt-dlp command not found after update.")
         return None
-    if retried.returncode == 0:
+    if rc == 0:
         print("Download Completed")
     else:
         print("Still failing after update - see causes above.")
-    return retried.returncode
+    return (rc, files)
 
 
-def run_yt_dlp(args):
-    """Run yt-dlp with streaming output so progress is visible. Returns returncode or None."""
+def _run_capture(args):
+    """Popen tee: stream yt-dlp output live, collect after_move filepaths."""
+    proc = subprocess.Popen(['yt-dlp'] + args, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, text=True, bufsize=1)
+    files, seen = [], set()
+    for line in proc.stdout:
+        print(line, end="")
+        found = _collect_file_line(line)
+        if found and found not in seen:
+            seen.add(found)
+            files.append(found)
+    proc.wait()
+    return (proc.returncode, files)
+
+
+def run_yt_dlp_capture(args):
+    """Run yt-dlp, stream progress, return (returncode|None, files[])."""
     if not ensure_yt_dlp():
-        return None
+        return (None, [])
     if needs_ffmpeg(args) and not ensure_ffmpeg():
         print("Stopped before download so you don't get a broken file.")
-        return None
+        return (None, [])
     try:
-        result = subprocess.run(['yt-dlp'] + args, text=True)
+        rc, files = _run_capture(_print_args(args))
     except FileNotFoundError:
         print("yt-dlp command not found. Install it with: pip install yt-dlp")
-        return None
-    if result.returncode == 0:
+        return (None, [])
+    if rc == 0:
         print("Download Completed")
     else:
         print("Download failed. Common causes:")
@@ -122,7 +162,52 @@ def run_yt_dlp(args):
         print("- File already exists and --no-overwrites skipped it (check folder)")
         print("- Picked format not available (try 1) Best)")
         if not _UPDATE_OFFERED:
-            retried = _offer_update_and_retry(args)
+            retried = _offer_update_and_retry(args, _run_capture)
             if retried is not None:
                 return retried
-    return result.returncode
+    return (rc, files)
+
+
+def run_yt_dlp(args):
+    """Run yt-dlp with streaming output so progress is visible. Returns returncode or None."""
+    rc, _ = run_yt_dlp_capture(args)
+    return rc
+
+
+def open_path(path):
+    """Open a file/folder with the OS default app. Never raises. Returns True if launched."""
+    import os
+    import sys
+    try:
+        p = pathlib.Path(str(path)).expanduser()
+    except Exception:
+        print(f"Couldn't open: {path}")
+        return False
+    if not p.exists():
+        print(f"Not found: {p}")
+        return False
+    try:
+        if sys.platform == "win32":
+            os.startfile(str(p))
+        elif sys.platform == "darwin":
+            subprocess.run(["open", str(p)])
+        else:
+            subprocess.run(["xdg-open", str(p)])
+        return True
+    except OSError as e:
+        print(f"Couldn't open {p}: {e}")
+        print(f"Find it at: {p}")
+        return False
+
+
+def open_folder(folder):
+    """Open a download folder. Never raises."""
+    try:
+        p = pathlib.Path(str(folder)).expanduser()
+    except Exception:
+        print(f"Couldn't open folder: {folder}")
+        return False
+    if not p.is_dir():
+        print(f"Folder not found: {p}")
+        return False
+    return open_path(p)

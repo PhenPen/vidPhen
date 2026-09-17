@@ -73,15 +73,68 @@ def _ask_scope(what):
 
 def _ask_another():
     """Return True to go again, False to exit."""
+    return _ask_next()
+
+
+def _pick_file(files):
+    """Numbered file picker for playlists/batches. Returns path or None."""
+    from pathlib import Path
+    shown = files[:50]
+    for i, f in enumerate(shown, 1):
+        print(f"{i}) {Path(f).name}")
+    if len(files) > len(shown):
+        print(f"... +{len(files) - len(shown)} more - open the folder instead")
+    print("0) Back")
     while True:
-        choice = ui.prompt("Download another? (y/n) : ").upper()
-        if choice == "Y":
+        raw = ui.prompt(f"Pick file 0-{len(shown)} : ").strip()
+        if raw == "0":
+            return None
+        try:
+            n = int(raw)
+        except ValueError:
+            print("Invalid Selection. Try again")
+            continue
+        if 1 <= n <= len(shown):
+            return shown[n - 1]
+        print("Invalid Selection. Try again")
+
+
+def _ask_next(base_dir=None, files=None):
+    """What-next menu. Return True to go again, False to exit."""
+    from vidphen.downloadSelect.runner import open_folder, open_path
+    seen, unique = set(), []
+    for f in list(files or []):
+        if f and f not in seen:
+            seen.add(f)
+            unique.append(f)
+    files = unique
+    has_folder = bool(base_dir)
+    while True:
+        print("What next?")
+        print("1) Download another")
+        if has_folder:
+            print("2) Open download folder")
+        if files:
+            print("3) Open downloaded file")
+        print("4) Quit")
+        choice = ui.prompt("Pick 1-4 : ").strip().upper()
+        if choice == "1" or choice == "Y":
             return True
-        elif choice == "N":
+        elif choice == "2" and has_folder:
+            open_folder(base_dir)
+            continue
+        elif choice == "3" and files:
+            if len(files) == 1:
+                open_path(files[0])
+            else:
+                picked = _pick_file(files)
+                if picked:
+                    open_path(picked)
+            continue
+        elif choice == "4" or choice == "N":
             print("Bye!")
             return False
-        else:
-            print("Invalid Selection. Try again")
+        print("Invalid Selection. Try again")
 
 
 def _settings_menu():
@@ -139,7 +192,7 @@ def _settings_menu():
 
 
 def _handle_subtitles_videos():
-    """Subtitles-only flow for videos. No quality prompt."""
+    """Subtitles-only flow for videos. No quality prompt. Returns False to quit app."""
     if _ask_count("videos") == "one":
         good, bad = _prompt_single_url("Enter video URL : ")
     else:
@@ -150,7 +203,7 @@ def _handle_subtitles_videos():
             print(f"  - {b}")
     if not good:
         print("No valid video links. Try again")
-        return
+        return True
     infos = _preview_batch(good)
     while True:
         batch_choice = ui.prompt(f"Download subtitles for these {len(good)} video(s)? (y/n) : ").upper()
@@ -159,7 +212,7 @@ def _handle_subtitles_videos():
         print("Invalid Selection. Try again")
     if batch_choice == "N":
         print("Cancelled.")
-        return
+        return _ask_next()
     if len(good) > 1:
         subs_scope = _ask_scope("Subtitles")
     else:
@@ -170,10 +223,11 @@ def _handle_subtitles_videos():
         sub_mode, sub_args = "none", []
     if sub_mode == "none" and subs_scope == "all":
         print("Continuing without subtitles.")
-        return
+        return True
     base_dir = ask_base_dir()
     titles = {url: (info["title"] if info else url) for url, info in infos}
     ok, failed, skipped = 0, 0, 0
+    all_files = []
     for i, url in enumerate(good, 1):
         print(f"--- Subtitles {i}/{len(good)}: {titles.get(url, url)} ---")
         cur_mode, cur_args = sub_mode, sub_args
@@ -185,22 +239,24 @@ def _handle_subtitles_videos():
             skipped += 1
             continue
         try:
-            rc = downloaderVideo.downloader("best", url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir)
+            rc, files = downloaderVideo.downloader("best", url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir)
         except Exception as e:
             print(f"Video {i} failed: {e}")
-            rc = 1
+            rc, files = 1, []
         if rc == 0:
             ok += 1
+            all_files += files
         else:
             failed += 1
     if skipped:
         print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
     else:
         print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
+    return _ask_next(base_dir, all_files)
 
 
 def _handle_subtitles_playlists():
-    """Subtitles-only flow for playlists. No quality prompt."""
+    """Subtitles-only flow for playlists. No quality prompt. Returns False to quit app."""
     if _ask_count("playlists") == "one":
         good, bad = _prompt_single_url("Enter playlist URL : ")
     else:
@@ -211,7 +267,7 @@ def _handle_subtitles_playlists():
             print(f"  - {b}")
     if not good:
         print("No valid playlist links. Try again")
-        return
+        return True
     from vidphen.contentSelect.ui import close_section as _close, open_section as _open
     from vidphen.metaDataSelect.metaData import fetch_playlist
     _open()
@@ -235,7 +291,7 @@ def _handle_subtitles_playlists():
         print("Invalid Selection. Try again")
     if batch_choice == "N":
         print("Cancelled.")
-        return
+        return _ask_next()
     if len(good) > 1:
         subs_scope = _ask_scope("Subtitles")
         range_scope = _ask_scope("Video range")
@@ -247,7 +303,7 @@ def _handle_subtitles_playlists():
         sub_mode, sub_args = "none", []
     if sub_mode == "none" and subs_scope == "all":
         print("Continuing without subtitles.")
-        return
+        return True
     if range_scope == "all":
         from vidphen.downloadSelect.downloaderPlaylist import plan_scope
         scope = plan_scope()
@@ -256,6 +312,7 @@ def _handle_subtitles_playlists():
     base_dir = ask_base_dir()
     titles = {url: (info["title"] if info else url) for url, info in pl_infos}
     ok, failed, skipped = 0, 0, 0
+    all_files = []
     for i, url in enumerate(good, 1):
         print(f"--- Playlist {i}/{len(good)}: {titles.get(url, url)} ---")
         cur_mode, cur_args = sub_mode, sub_args
@@ -267,18 +324,20 @@ def _handle_subtitles_playlists():
             skipped += 1
             continue
         try:
-            rc = downloaderPlaylist.downloader("best", url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope)
+            rc, files = downloaderPlaylist.downloader("best", url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope)
         except Exception as e:
             print(f"Playlist {i} failed: {e}")
-            rc = 1
+            rc, files = 1, []
         if rc == 0:
             ok += 1
+            all_files += files
         else:
             failed += 1
     if skipped:
         print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
     else:
         print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
+    return _ask_next(base_dir, all_files)
 
 
 def main():
@@ -313,9 +372,11 @@ def main():
                     break
                 print("Invalid Selection. Try again")
             if kind == "1":
-                _handle_subtitles_videos()
+                keep = _handle_subtitles_videos()
             else:
-                _handle_subtitles_playlists()
+                keep = _handle_subtitles_playlists()
+            if not keep:
+                return
             continue
         if content == "1":
             if _ask_count("videos") == "one":
@@ -337,7 +398,7 @@ def main():
                 print("Invalid Selection. Try again")
             if batch_choice == "N":
                 print("Cancelled.")
-                if not _ask_another():
+                if not _ask_next():
                     return
                 continue
             if len(good) > 1:
@@ -365,6 +426,7 @@ def main():
             base_dir = ask_base_dir()
             titles = {url: (info["title"] if info else url) for url, info in infos}
             ok, failed, skipped = 0, 0, 0
+            all_files = []
             for i, url in enumerate(good, 1):
                 print(f"--- Video {i}/{len(good)}: {titles.get(url, url)} ---")
                 cur_ID = ID
@@ -406,18 +468,20 @@ def main():
                             if fc == "3":
                                 fallback_policy = "auto"
                 try:
-                    rc = downloaderVideo.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir)
+                    rc, files = downloaderVideo.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir)
                 except Exception as e:
                     print(f"Video {i} failed: {e}")
-                    rc = 1
+                    rc, files = 1, []
                 if rc == 0:
                     ok += 1
+                    all_files += files
                 else:
                     failed += 1
             if skipped:
                 print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
             else:
                 print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
+            last_base_dir, last_files = base_dir, all_files
         elif content == "2":
             if _ask_count("playlists") == "one":
                 good, bad = _prompt_single_url("Enter playlist URL : ")
@@ -453,7 +517,7 @@ def main():
                 print("Invalid Selection. Try again")
             if batch_choice == "N":
                 print("Cancelled.")
-                if not _ask_another():
+                if not _ask_next():
                     return
                 continue
             if len(good) > 1:
@@ -478,6 +542,7 @@ def main():
             base_dir = ask_base_dir()
             titles = {url: (info["title"] if info else url) for url, info in pl_infos}
             ok, failed, skipped = 0, 0, 0
+            all_files = []
             for i, url in enumerate(good, 1):
                 print(f"--- Playlist {i}/{len(good)}: {titles.get(url, url)} ---")
                 cur_ID = ID
@@ -489,22 +554,24 @@ def main():
                     print(f"Subtitles for playlist {i}/{len(good)}:")
                     cur_mode, cur_args = plan_subs(url, allow_only=False)
                 try:
-                    rc = downloaderPlaylist.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope)
+                    rc, files = downloaderPlaylist.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope)
                 except Exception as e:
                     print(f"Playlist {i} failed: {e}")
-                    rc = 1
+                    rc, files = 1, []
                 if rc == 0:
                     ok += 1
+                    all_files += files
                 else:
                     failed += 1
             if skipped:
                 print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
             else:
                 print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
+            last_base_dir, last_files = base_dir, all_files
         else:
             print("Not a valid content selection. Try Again")
             continue
-        if not _ask_another():
+        if not _ask_next(last_base_dir, last_files):
             return
 
 
