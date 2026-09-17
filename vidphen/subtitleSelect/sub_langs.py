@@ -36,13 +36,14 @@ def lang_args_for_choice(choice, manual_code=""):
     return None
 
 
-def show_subs_mode_menu():
+def show_subs_mode_menu(allow_only=True):
     from vidphen.contentSelect.ui import open_section
     open_section()
     print("Subtitles?")
     print("1) No subtitles - just video")
     print("2) Video + subtitles")
-    print("3) Subtitles only - no video")
+    if allow_only:
+        print("3) Subtitles only - no video")
 
 
 def _pick_language():
@@ -75,7 +76,7 @@ def _ask_auto_captions():
         print("Invalid Selection. Try again")
 
 
-def plan_subs(url=None):
+def plan_subs(url=None, allow_only=True):
     """Before download: return (mode, lang_args). No downloading here.
 
     With a url, the language menu is built from the video's actual
@@ -83,13 +84,15 @@ def plan_subs(url=None):
     menu is used.
     """
     from vidphen.contentSelect.ui import close_section, prompt
-    show_subs_mode_menu()
+    show_subs_mode_menu(allow_only=allow_only)
+    valid = ("2", "3") if allow_only else ("2",)
+    prompt_text = "Pick 1-3 : " if allow_only else "Pick 1-2 : "
     while True:
-        choice = prompt("Pick 1-3 : ").strip()
+        choice = prompt(prompt_text).strip()
         if choice == "1":
             close_section()
             return ("none", [])
-        elif choice in ("2", "3"):
+        elif choice in valid:
             mode = "with" if choice == "2" else "only"
             if url is not None:
                 action, dyn = _pick_language_dynamic(url)
@@ -101,6 +104,19 @@ def plan_subs(url=None):
             lang_args = lang_args + _ask_auto_captions()
             return (mode, lang_args)
         print("Invalid Selection. Try again")
+
+
+def plan_subs_only(url=None):
+    """Language pick for subtitles-only downloads. Returns ("only", args) or ("none", [])."""
+    if url is not None:
+        action, dyn = _pick_language_dynamic(url)
+        if action == "ok":
+            return ("only", dyn)
+        elif action == "skip":
+            return ("none", [])
+    lang_args = _pick_language()
+    lang_args = lang_args + _ask_auto_captions()
+    return ("only", lang_args)
 
 
 _SUB_CACHE = {}
