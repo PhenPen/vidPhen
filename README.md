@@ -137,7 +137,7 @@ Check health: `python test.py` (offline, no prompts).
 
 ## License
 
-[Unlicensed for Now — license to be added later. All rights reserved.]
+MIT License — see [LICENSE](LICENSE).
 
 ## Contributing
 

@@ -6,8 +6,21 @@ build-backend = "setuptools.build_meta"
 name = "vidphen"
 version = "1.0"
 description = "Download videos and playlists from your terminal"
+readme = "README.md"
+authors = [{name = "Phen", email = "thephenpen@gmail.com"}]
+license = "MIT"
 requires-python = ">=3.9"
 dependencies = ["yt-dlp>=2023.0.0"]
+keywords = ["youtube", "downloader", "yt-dlp", "cli"]
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+]
+
+[project.urls]
+Homepage = "https://github.com/PhenPen/vidPhen"
 
 [project.scripts]
 vidphen = "vidphen.cli:main"
