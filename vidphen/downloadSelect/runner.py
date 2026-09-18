@@ -2,8 +2,15 @@ import pathlib
 import re
 import shutil
 import subprocess
+import time
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
+
+# Suffixes yt-dlp leaves behind for unfinished work - never offer these.
+_PARTIAL_SUFFIXES = {".part", ".ytdl", ".temp", ".tmp", ".part-frag"}
+
+# Cap so a big folder never floods the picker.
+FALLBACK_LIMIT = 20
 
 from vidphen.configSelect.config import default_location
 from vidphen.contentSelect.ui import prompt
@@ -153,13 +160,94 @@ def _offer_update_and_retry(args, _run):
     return (rc, files)
 
 
+def _safe_print(line):
+    """Print a yt-dlp output line without ever raising on exotic filenames."""
+    try:
+        print(line, end="")
+    except UnicodeEncodeError:
+        safe = _ANSI_RE.sub("", line).encode("ascii", "backslashreplace").decode("ascii")
+        try:
+            print(safe, end="")
+        except Exception:
+            pass
+
+
+def _base_dir_from_args(args):
+    """Recover the download folder from the `-o` template arg. None if unknown."""
+    items = list(args)
+    try:
+        tmpl = str(items[items.index("-o") + 1])
+    except (ValueError, IndexError):
+        return None
+    base = tmpl.split("%(", 1)[0].rstrip("/\\")
+    if not base:
+        return None
+    try:
+        p = pathlib.Path(base).expanduser()
+    except Exception:
+        return None
+    try:
+        if p.is_dir():
+            return str(p)
+    except OSError:
+        return None
+    return None
+
+
+def _fallback_newest(base_dir, since, limit=FALLBACK_LIMIT):
+    """Newest finished files written during the run. Pure-ish (reads dir).
+
+    Backup for when yt-dlp's `--print` lines can't be parsed (exotic
+    characters, skips). Ignores partials, oldest-first excluded.
+    """
+    try:
+        root = pathlib.Path(str(base_dir)).expanduser()
+    except Exception:
+        return []
+    try:
+        if not root.is_dir():
+            return []
+    except OSError:
+        return []
+    scored = []
+    try:
+        entries = list(root.rglob("*"))
+    except OSError:
+        return []
+    for p in entries:
+        try:
+            if not p.is_file():
+                continue
+            if p.suffix.lower() in _PARTIAL_SUFFIXES:
+                continue
+            mtime = p.stat().st_mtime
+        except OSError:
+            continue
+        if mtime < since - 5:
+            continue
+        scored.append((mtime, p))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    out = []
+    for _, p in scored[:limit]:
+        try:
+            out.append(str(p.resolve()))
+        except OSError:
+            continue
+    return out
+
+
 def _run_capture(args):
-    """Popen tee: stream yt-dlp output live, collect after_move filepaths."""
+    """Popen tee: stream yt-dlp output live, collect printed filepaths.
+
+    yt-dlp emits UTF-8: decode explicitly so a Windows locale never
+    kills the run on exotic title characters (eg fullwidth bars).
+    """
     proc = subprocess.Popen(['yt-dlp'] + args, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, text=True, bufsize=1)
+                            stderr=subprocess.STDOUT, text=True, bufsize=1,
+                            encoding="utf-8", errors="replace")
     files, seen = [], set()
     for line in proc.stdout:
-        print(line, end="")
+        _safe_print(line)
         found = _collect_file_line(line)
         if found and found not in seen:
             seen.add(found)
@@ -175,11 +263,23 @@ def run_yt_dlp_capture(args):
     if needs_ffmpeg(args) and not ensure_ffmpeg():
         print("Stopped before download so you don't get a broken file.")
         return (None, [])
+    start = time.time()
     try:
         rc, files = _run_capture(_print_args(args))
     except FileNotFoundError:
         print("yt-dlp command not found. Install it with: pip install yt-dlp")
         return (None, [])
+    if rc == 0 and not files:
+        # Print-capture missed (exotic names, skips): fall back to the
+        # newest files actually written during this run.
+        fallback = _fallback_newest(_base_dir_from_args(args), start)
+        if fallback:
+            files = fallback
+            if len(files) <= 5:
+                for f in files:
+                    print(f"Saved: {pathlib.Path(f).name}")
+            else:
+                print(f"Saved {len(files)} files - open the folder to browse")
     if rc == 0:
         print("Download Completed")
     else:
