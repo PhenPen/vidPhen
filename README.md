@@ -1,4 +1,4 @@
-Vidphen
+# Vidphen
 
 An interactive terminal downloader for videos, playlists, and subtitles only. Thin wrapper over `yt-dlp` (+ `ffmpeg` for merges/converts).
 
