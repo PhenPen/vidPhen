@@ -63,16 +63,27 @@ def ask_base_dir():
     if current:
         print(f"Saved folder: {current}")
     while True:
-        choice = prompt("Save to Default (D) or Custom once (C)? : ").upper()
-        if choice in ("D", "Y"):
-            return default_location()
-        elif choice in ("C", "N"):
-            raw = prompt("Enter file location eg C:/Users/... : ").strip().strip('"')
-            path = pathlib.Path(raw).expanduser()
+        choice = prompt("Save to Default (D) or Custom once (C)? : ").strip().upper()
+        try:
+            if choice in ("", "D", "Y"):
+                path = pathlib.Path(default_location()).expanduser()
+            elif choice in ("C", "N"):
+                raw = prompt("Enter folder : ").strip().strip('"')
+                if not raw:
+                    print("Enter a folder path.")
+                    continue
+                path = pathlib.Path(raw).expanduser()
+            else:
+                print("Choose D for default or C for custom.")
+                continue
             path.mkdir(parents=True, exist_ok=True)
-            return str(path)
-        else:
-            print("Invalid Selection. Try again")
+            from tempfile import TemporaryFile
+            with TemporaryFile(dir=path):
+                pass
+        except (OSError, ValueError) as error:
+            print(f"Cannot save to that folder: {error}")
+            continue
+        return str(path)
 
 
 def build_video_template(base_dir):

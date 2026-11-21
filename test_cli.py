@@ -120,3 +120,16 @@ class ResultTests(unittest.TestCase):
             metadata = json.dumps({"es": {"filepath": str(path)}})
             self.assertEqual(runner._collect_file_line(f"VIDPHEN_SUBS:{metadata}"), [str(path.resolve())])
             self.assertEqual(runner._collect_file_line(str(path)), [])
+
+
+class NavigationTests(unittest.TestCase):
+    def test_one_paste_prompt_and_back_return_to_main_menu(self):
+        output = io.StringIO()
+        with patch("vidphen.doctor.run_doctor"), patch("builtins.input", side_effect=["1", ":back", "5"]), redirect_stdout(output):
+            cli.main()
+        self.assertEqual(output.getvalue().count("What do you want to do?"), 2)
+        self.assertNotIn("How many", output.getvalue())
+
+    def test_batch_defaults_to_shared_settings(self):
+        with patch.object(cli.ui, "prompt", return_value=""):
+            self.assertFalse(cli._customize_batch())

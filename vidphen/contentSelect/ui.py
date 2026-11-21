@@ -32,12 +32,19 @@ def banner(version=""):
     print("=" * 70)
 
 
-def prompt(message=""):
+class BackToMenu(Exception):
+    """Return from the current workflow to the main menu."""
+
+
+def prompt(message="", allow_back=True):
     """input() that confirms quit on Ctrl+C / Ctrl+D instead of traceback."""
     import builtins
     while True:
         try:
-            return builtins.input(message)
+            answer = builtins.input(message)
+            if allow_back and answer.strip().lower() == ":back":
+                raise BackToMenu
+            return answer
         except (KeyboardInterrupt, EOFError):
             try:
                 again = builtins.input("\nQuit app? (y/n) : ").strip().upper()
