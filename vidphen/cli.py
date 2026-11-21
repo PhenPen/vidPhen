@@ -353,7 +353,7 @@ def _handle_subtitles_playlists():
     titles = {url: (info["title"] if info else url) for url, info in pl_infos}
     ok, failed, skipped, unverified = 0, 0, 0, 0
     all_files = []
-    for i, url in enumerate(good, 1):
+    for i, (url, info) in enumerate(pl_infos, 1):
         print(f"--- Playlist {i}/{len(good)}: {titles.get(url, url)} ---")
         cur_mode, cur_args = sub_mode, sub_args
         if subs_scope == "per":
@@ -364,7 +364,7 @@ def _handle_subtitles_playlists():
             skipped += 1
             continue
         try:
-            rc, files = downloaderPlaylist.downloader("best", url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope)
+            rc, files = downloaderPlaylist.downloader("best", url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope or downloaderPlaylist.plan_scope(info["count"] if info else None))
         except Exception as e:
             print(f"Playlist {i} failed: {e}")
             rc, files = 1, []
@@ -585,7 +585,7 @@ def main():
             titles = {url: (info["title"] if info else url) for url, info in pl_infos}
             ok, failed, skipped = 0, 0, 0
             all_files = []
-            for i, url in enumerate(good, 1):
+            for i, (url, info) in enumerate(pl_infos, 1):
                 print(f"--- Playlist {i}/{len(good)}: {titles.get(url, url)} ---")
                 cur_ID = ID
                 if quality_scope == "per":
@@ -596,7 +596,7 @@ def main():
                     print(f"Subtitles for playlist {i}/{len(good)}:")
                     cur_mode, cur_args = plan_subs(url, allow_only=False)
                 try:
-                    rc, files = downloaderPlaylist.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope)
+                    rc, files = downloaderPlaylist.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope or downloaderPlaylist.plan_scope(info["count"] if info else None))
                 except Exception as e:
                     print(f"Playlist {i} failed: {e}")
                     rc, files = 1, []

@@ -37,3 +37,16 @@ class BatchLinkTests(unittest.TestCase):
         self.assertEqual(good, [url, "https://example.org/video"])
         self.assertEqual(bad, ["invalid"])
         self.assertIn("Skipped duplicate link:", output.getvalue())
+
+
+class PlaylistScopeTests(unittest.TestCase):
+    def test_invalid_range_can_be_corrected_without_restart(self):
+        with patch.object(downloaderPlaylist, "prompt", side_effect=[" R ", "9-2", "1-12", "2-4"]), redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(downloaderPlaylist.plan_scope(count=10), ("R", 2, 4))
+        self.assertIn("Selected 3 entries", output.getvalue())
+
+    def test_everything_has_no_artificial_item_limit(self):
+        with patch.object(downloaderPlaylist, "prompt", return_value=" E "), redirect_stdout(io.StringIO()):
+            scope = downloaderPlaylist.plan_scope()
+        self.assertEqual(scope, ("E",))
+        self.assertNotIn("--playlist-end", downloaderPlaylist._scope_to_args(scope))
