@@ -3,9 +3,11 @@
 from contextlib import contextmanager
 from os import environ
 
+from rich.cells import cell_len
 from rich.console import Console
 from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
 from rich.table import Table
+from rich.text import Text
 
 
 console = Console(markup=False, highlight=False)
@@ -47,6 +49,29 @@ def show_table(title, headers, rows):
         print(title)
         for row in rows:
             print("  " + " | ".join(row))
+
+
+def show_preview(title, label, value_label, rows):
+    """Give numbers and durations fixed space and wrap only the title."""
+    if not styled():
+        show_table(title, ("#", label, value_label), rows)
+        return
+    index_width = max(cell_len(index) for index, _, _ in rows)
+    value_width = max(cell_len(value) for value in [value_label, *(row[2] for row in rows)])
+    if console.width < index_width + value_width + 16:
+        console.print(title)
+        for index, name, value in rows:
+            console.print(Text(f"{index}. {name}"), overflow="fold")
+            console.print(Text(f"   {value_label}: {value}"), overflow="fold")
+        return
+
+    table = Table(title=title, title_justify="left", header_style="bold cyan", box=None, padding=(0, 1))
+    table.add_column("#", width=index_width, no_wrap=True)
+    table.add_column(label, ratio=1, overflow="fold")
+    table.add_column(value_label, width=value_width, no_wrap=True, justify="right")
+    for row in rows:
+        table.add_row(*(Text(value) for value in row))
+    console.print(table, width=console.width)
 
 
 @contextmanager

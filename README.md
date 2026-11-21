@@ -76,7 +76,7 @@ What do you want to do?
 - **Playlists:** paste playlist links and choose Everything, a range, or specific entries.
 - **Subtitles only:** choose Videos or Playlists, paste links, then select a language. A playlist language preference applies to every selected entry.
 - For batches, settings apply to every item by default. Choose **Customize** to set options per item.
-- Press Enter on an empty line to finish entering links. Type `:back` at a workflow prompt to return to the main menu.
+- VidPhen starts checking each link as you paste it. Press Enter on an empty line to finish entering links. Type `:back` at a workflow prompt to return to the main menu.
 - VidPhen uses Rich in interactive terminals. Set `NO_COLOR` for plain output.
 
 **Shortcuts:** video quality `1` = Best auto; audio path picks type next; `Advanced` accepts raw IDs (`250`, `247+250`).
@@ -112,7 +112,7 @@ Output names: videos `%(title)s.%(ext)s`, playlists `%(playlist_title)s/%(playli
 ```
 vidPhen/
 ├── yT.py                        # Dev shim -> vidphen.cli:main
-├── pyproject.toml               # Package vidphen 1.0, console script vidphen
+├── pyproject.toml               # Package metadata and vidphen console script
 ├── requirements.txt             # Runtime dependencies (mirrors pyproject)
 ├── test.py                      # Offline checks: python test.py
 ├── test_cli.py                  # CLI regression checks: python -m unittest test_cli

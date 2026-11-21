@@ -305,3 +305,35 @@ class ConfigMigrationTests(unittest.TestCase):
             new.write_text('{"download_dir": "/new"}', encoding="utf-8")
             self.assertEqual(config._load_config(), "/new")
             self.assertEqual(json.loads(old.read_text(encoding="utf-8"))["download_dir"], "/old")
+
+
+class PreviewAlignmentTests(unittest.TestCase):
+    def test_wrapping_title_preserves_duration_alignment_at_38_columns(self):
+        from rich.console import Console
+        from vidphen.contentSelect import ui
+
+        output = io.StringIO()
+        console = Console(file=output, width=38, force_terminal=True, color_system=None, _environ={})
+        rows = [
+            ("1", "Short title", "42s"),
+            ("2", "A long title that needs several lines on a narrow terminal", "1h 03m"),
+            ("3", "Missing duration", "unknown"),
+        ]
+        with patch.object(ui, "console", console), patch.object(ui, "styled", return_value=True):
+            ui.show_preview("Video preview", "Video", "Duration", rows)
+        lines = output.getvalue().splitlines()
+        endings = {len(line.rstrip()) for line in lines if line.rstrip().endswith(("42s", "1h 03m", "unknown"))}
+        self.assertEqual(len(endings), 1)
+        self.assertLessEqual(max(map(len, lines)), 38)
+        self.assertIn("terminal", output.getvalue())
+
+    def test_very_narrow_terminal_stacks_duration_under_title(self):
+        from rich.console import Console
+        from vidphen.contentSelect import ui
+
+        output = io.StringIO()
+        console = Console(file=output, width=22, force_terminal=True, color_system=None, _environ={})
+        with patch.object(ui, "console", console), patch.object(ui, "styled", return_value=True):
+            ui.show_preview("Video preview", "Video", "Duration", [("1", "A long video title", "42s")])
+        self.assertIn("Duration: 42s", output.getvalue())
+        self.assertLessEqual(max(map(len, output.getvalue().splitlines())), 22)

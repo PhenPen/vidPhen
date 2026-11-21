@@ -96,8 +96,8 @@ def _collect_previews(mode):
             value = format_duration(info["duration"]) if mode == "video" else str(info["count"])
             rows.append((str(index), info["title"], value))
         else:
-            rows.append((str(index), url, "Preview unavailable"))
-    ui.show_table(f"{mode.title()} preview", ("#", mode.title(), value_label), rows)
+            rows.append((str(index), url, "unknown"))
+    ui.show_preview(f"{mode.title()} preview", mode.title(), value_label, rows)
     return previews
 
 
