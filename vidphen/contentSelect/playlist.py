@@ -26,7 +26,7 @@ def playlist(url) :
 
 # To select playlist video format (Advanced) - single ID prompt
 def playlistFormat(url) :
-    if table_short(url) is None:
+    if table_short(url, playlist=True) is None:
         return "bv*+ba/b"
 
     while True :

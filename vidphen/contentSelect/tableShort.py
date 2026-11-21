@@ -1,10 +1,11 @@
 import subprocess
 
 
-def table_short(url, quiet=False):
+def table_short(url, quiet=False, playlist=False):
     """Run `yt-dlp -F` and return stdout. Returns None if yt-dlp is missing."""
     try:
-        result = subprocess.run(['yt-dlp', '-F', url], capture_output=True, text=True)
+        scope = ['--yes-playlist', '--playlist-items', '1'] if playlist else ['--no-playlist']
+        result = subprocess.run(['yt-dlp', *scope, '-F', url], capture_output=True, text=True)
     except FileNotFoundError:
         print("yt-dlp command not found. Install it with: pip install yt-dlp")
         return None

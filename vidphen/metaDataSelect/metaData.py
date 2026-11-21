@@ -23,7 +23,7 @@ def fetch(url, quiet=False):
     """Return {title, uploader, duration, url} or None. No download."""
     try:
         result = subprocess.run(
-            ['yt-dlp', '--skip-download', '--print',
+            ['yt-dlp', '--no-playlist', '--skip-download', '--print',
              '%(title)s|%(uploader)s|%(duration)s|%(webpage_url)s', url],
             capture_output=True, text=True)
     except FileNotFoundError:
@@ -53,11 +53,11 @@ def fetch_playlist(url, quiet=False):
     """Return {title, count, url} for playlists. No download. None on failure."""
     try:
         title_res = subprocess.run(
-            ['yt-dlp', '--skip-download', '--flat-playlist', '--print',
+            ['yt-dlp', '--yes-playlist', '--skip-download', '--flat-playlist', '--print',
              '%(playlist_title)s', '--playlist-items', '1', url],
             capture_output=True, text=True)
         list_res = subprocess.run(
-            ['yt-dlp', '--skip-download', '--flat-playlist', '--print',
+            ['yt-dlp', '--yes-playlist', '--skip-download', '--flat-playlist', '--print',
              '%(title)s', url],
             capture_output=True, text=True)
     except FileNotFoundError:

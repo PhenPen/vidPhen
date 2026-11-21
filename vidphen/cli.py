@@ -1,5 +1,5 @@
 from vidphen.contentSelect import ui, video,playlist
-from vidphen.contentSelect.validators import is_valid_url, parse_url_list
+from vidphen.contentSelect.validators import is_valid_url, parse_url_list, youtube_link_kind
 from vidphen.downloadSelect import downloaderVideo,downloaderPlaylist
 from vidphen.downloadSelect.runner import ask_base_dir
 from vidphen.metaDataSelect.metaData import fetch, format_duration
@@ -38,6 +38,19 @@ def _prompt_single_url(prompt_text):
         if is_valid_url(url):
             return ([url], [])
         print("Invalid link. Paste a video link and try again")
+
+
+def _filter_link_kind(urls, mode):
+    accepted = []
+    for url in urls:
+        kind = youtube_link_kind(url)
+        if mode == "video" and kind == "playlist":
+            print(f"Skipped playlist link in Videos mode: {url}")
+        elif mode == "playlist" and kind == "video":
+            print(f"Skipped video link without a playlist: {url}")
+        else:
+            accepted.append(url)
+    return accepted
 
 
 def _preview_batch(urls):
@@ -222,6 +235,7 @@ def _handle_subtitles_videos():
         print(f"Skipped {len(bad)} invalid link(s):")
         for b in bad:
             print(f"  - {b}")
+    good = _filter_link_kind(good, "video")
     if not good:
         print("No valid video links. Try again")
         return True
@@ -286,6 +300,7 @@ def _handle_subtitles_playlists():
         print(f"Skipped {len(bad)} invalid link(s):")
         for b in bad:
             print(f"  - {b}")
+    good = _filter_link_kind(good, "playlist")
     if not good:
         print("No valid playlist links. Try again")
         return True
@@ -408,6 +423,7 @@ def main():
                 print(f"Skipped {len(bad)} invalid link(s):")
                 for b in bad:
                     print(f"  - {b}")
+            good = _filter_link_kind(good, "video")
             if not good:
                 print("No valid video links. Try again")
                 continue
@@ -512,6 +528,7 @@ def main():
                 print(f"Skipped {len(bad)} invalid link(s):")
                 for b in bad:
                     print(f"  - {b}")
+            good = _filter_link_kind(good, "playlist")
             if not good:
                 print("No valid playlist links. Try again")
                 continue

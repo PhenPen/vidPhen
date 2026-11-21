@@ -14,7 +14,7 @@ def downloader(ID, url, extra_args=None, sub_mode="none", sub_args=None, base_di
     if base_dir is None:
         base_dir = ask_base_dir()
     download_template = build_video_template(base_dir)
-    common = ["--no-overwrites", "--continue", "--windows-filenames"]
+    common = ["--no-playlist", "--no-overwrites", "--continue", "--windows-filenames"]
     if sub_mode == "only":
         return run_yt_dlp_capture(['--write-subs', '--skip-download'] + sub_args + ["-o", download_template] + common + [url])
     sub_flags = (['--write-subs'] + sub_args) if sub_mode == "with" else []

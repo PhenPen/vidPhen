@@ -14,10 +14,10 @@ def _download_with_template(ID, url, extra_args, audio_extra=None, sub_mode="non
     if ID == "bestaudio" and not audio_extra:
         audio_extra = ["--extract-audio", "--audio-format", "mp3"]
     if sub_mode == "only":
-        return run_yt_dlp_capture(['--write-subs', '--skip-download', '--ignore-errors']
+        return run_yt_dlp_capture(['--yes-playlist', '--write-subs', '--skip-download']
                      + sub_args + ["-o", download_template] + extra_args + [url])
     sub_flags = (['--write-subs'] + sub_args) if sub_mode == "with" else []
-    return run_yt_dlp_capture(['-f', ID, "-o", download_template] + audio_extra + sub_flags + extra_args + [url])
+    return run_yt_dlp_capture(['--yes-playlist', '-f', ID, "-o", download_template] + audio_extra + sub_flags + extra_args + [url])
 
 
 def _scope_to_args(scope):

@@ -1,4 +1,5 @@
 import re
+from urllib.parse import parse_qs, urlsplit
 
 _LINK_RE = re.compile(
     r"^(https?://)?[^\s/$.?#]+\.[^\s]*$",
@@ -19,6 +20,27 @@ def is_valid_url(url):
         return False
     url = url.strip()
     return bool(_LINK_RE.match(url))
+
+
+def youtube_link_kind(url):
+    """Classify recognizable YouTube links. Other extractors decide their own types."""
+    try:
+        parsed = urlsplit(url if "://" in url else f"https://{url}")
+        host = parsed.hostname or ""
+    except ValueError:
+        return None
+    query = parse_qs(parsed.query)
+    listed = bool(query.get("list"))
+    if host == "youtu.be" and parsed.path.strip("/"):
+        return "both" if listed else "video"
+    if host != "youtube.com" and not host.endswith(".youtube.com"):
+        return None
+    path = parsed.path.rstrip("/")
+    if path == "/playlist" and listed:
+        return "playlist"
+    if (path == "/watch" and query.get("v")) or path.startswith(("/shorts/", "/live/", "/embed/")):
+        return "both" if listed else "video"
+    return None
 
 
 def is_valid_format_id(format_id):
