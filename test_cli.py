@@ -105,8 +105,8 @@ class ResultTests(unittest.TestCase):
         cli._record_result(results, "Missing captions", 0, [], subtitles_only=True)
         with redirect_stdout(io.StringIO()) as output:
             self.assertEqual(cli._show_results(results), ["first.mp4"])
-        self.assertIn("Partial download (1 files) - Playlist", output.getvalue())
-        self.assertIn("No subtitle file found - Missing captions", output.getvalue())
+        self.assertIn("Partial download (1 file) | Playlist", output.getvalue())
+        self.assertIn("No subtitle file found | Missing captions", output.getvalue())
 
     def test_only_explicit_paths_count_as_results(self):
         import json
@@ -125,7 +125,7 @@ class ResultTests(unittest.TestCase):
 class NavigationTests(unittest.TestCase):
     def test_one_paste_prompt_and_back_return_to_main_menu(self):
         output = io.StringIO()
-        with patch("vidphen.doctor.run_doctor"), patch("builtins.input", side_effect=["1", ":back", "5"]), redirect_stdout(output):
+        with patch("builtins.input", side_effect=["1", ":back", "5"]), redirect_stdout(output):
             cli.main()
         self.assertEqual(output.getvalue().count("What do you want to do?"), 2)
         self.assertNotIn("How many", output.getvalue())
@@ -133,3 +133,71 @@ class NavigationTests(unittest.TestCase):
     def test_batch_defaults_to_shared_settings(self):
         with patch.object(cli.ui, "prompt", return_value=""):
             self.assertFalse(cli._customize_batch())
+
+
+class TerminalRenderingTests(unittest.TestCase):
+    def test_narrow_styled_preview_renders_long_title(self):
+        from rich.console import Console
+        from vidphen.contentSelect import ui
+
+        output = io.StringIO()
+        console = Console(file=output, width=32, force_terminal=True, color_system=None, _environ={})
+        with patch.object(ui, "console", console), patch.object(ui, "styled", return_value=True):
+            ui.show_table("Video preview", ("#", "Video", "Duration"), [("1", "A long title " * 10, "1m")])
+        self.assertIn("A long title", output.getvalue())
+        self.assertLessEqual(max(map(len, output.getvalue().splitlines())), 32)
+
+    def test_redirected_output_has_plain_text(self):
+        from vidphen.contentSelect import ui
+
+        with patch.object(ui, "styled", return_value=False), redirect_stdout(io.StringIO()) as output:
+            ui.banner("1.0")
+            ui.show_table("Results", ("Status", "Name"), [("Saved", "A video")])
+        self.assertEqual(output.getvalue(), "VidPhen  v1.0\nResults\n  Saved | A video\n")
+
+
+class BatchedMenuTests(unittest.TestCase):
+    def test_mixed_video_batch_can_return_success_and_failure(self):
+        first, second = "https://example.com/first", "https://example.com/second"
+        inputs = ["1", first, first, "invalid", second, "", "y", "", "4"]
+        output = io.StringIO()
+        with patch("builtins.input", side_effect=inputs), redirect_stdout(output), \
+                patch.object(cli, "fetch", return_value=None), \
+                patch.object(cli.video, "video", return_value="best"), \
+                patch.object(cli, "plan_subs", return_value=("none", [])), \
+                patch.object(cli, "ask_base_dir", return_value="downloads"), \
+                patch.object(downloaderVideo, "downloader", side_effect=[(0, ["first.mp4"]), (1, [])]) as run:
+            cli.main()
+        self.assertEqual([call.args[1] for call in run.call_args_list], [first, second])
+        self.assertIn("Skipped duplicate link", output.getvalue())
+        self.assertIn("1 file available", output.getvalue())
+        self.assertIn(f"Failed | {second}", output.getvalue())
+
+    def test_full_playlist_with_partial_results(self):
+        url = "https://www.youtube.com/playlist?list=playlist"
+        inputs = ["2", url, "", "y", " E ", "4"]
+        output = io.StringIO()
+        with patch("builtins.input", side_effect=inputs), redirect_stdout(output), \
+                patch.object(cli, "fetch_playlist", return_value={"title": "Course", "count": 2}), \
+                patch.object(cli.playlist, "playlist", return_value="best"), \
+                patch.object(cli, "plan_subs", return_value=("none", [])), \
+                patch.object(cli, "ask_base_dir", return_value="downloads"), \
+                patch.object(downloaderPlaylist, "run_yt_dlp_capture", return_value=(1, ["first.mp4"])) as run:
+            cli.main()
+        self.assertNotIn("--playlist-end", run.call_args.args[0])
+        self.assertIn("Partial download (1 file) | Course", output.getvalue())
+
+    def test_subtitle_batch_reports_files_and_missing_language(self):
+        urls = [f"https://example.com/{kind}" for kind in ("manual", "auto", "missing")]
+        inputs = ["3", "1", *urls, "", "y", "", "4"]
+        output = io.StringIO()
+        with patch("builtins.input", side_effect=inputs), redirect_stdout(output), \
+                patch.object(cli, "fetch", return_value=None), \
+                patch.object(cli, "plan_subs_only", return_value=("only", ["--sub-langs", "es", "--write-automatic-subs"])), \
+                patch.object(cli, "ask_base_dir", return_value="downloads"), \
+                patch.object(downloaderVideo, "run_yt_dlp_capture", side_effect=[(0, ["manual.es.vtt"]), (0, ["auto.es.vtt"]), (0, [])]) as run:
+            cli.main()
+        self.assertEqual(run.call_count, 3)
+        self.assertTrue(all("--skip-download" in call.args[0] for call in run.call_args_list))
+        self.assertIn("2 files available", output.getvalue())
+        self.assertIn(f"No subtitle file found | {urls[-1]}", output.getvalue())

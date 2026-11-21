@@ -1,35 +1,74 @@
-"""Section dividers so screen output isn't cluttered."""
+"""Terminal rendering for VidPhen."""
 
-DIVIDER = "-" * 70
-HEADER_LINE = "----- VIDPHEN " + "-" * 56
+from contextlib import contextmanager
+from os import environ
 
-# Generated with figlet 'standard' font (never hand-drawn).
-BANNER = r"""__     _____ ____  ____  _   _ _____ _   _
-\ \   / /_ _|  _ \|  _ \| | | | ____| \ | |
- \ \ / / | || | | | |_) | |_| |  _| |  \| |
-  \ V /  | || |_| |  __/|  _  | |___| |\  |
-   \_/  |___|____/|_|   |_| |_|_____|_| \_|"""
+from rich.console import Console
+from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
+from rich.table import Table
+
+
+console = Console(markup=False, highlight=False)
+
+
+def styled():
+    return console.is_terminal and "NO_COLOR" not in environ and environ.get("TERM") != "dumb"
 
 
 def divider():
-    print(DIVIDER)
+    print()
 
 
 def open_section():
-    divider()
-    print(HEADER_LINE)
+    print()
 
 
 def close_section():
-    divider()
+    print()
 
 
 def banner(version=""):
-    print("=" * 70)
-    print(BANNER)
-    if version:
-        print(f"  v{version}")
-    print("=" * 70)
+    label = f"VidPhen  v{version}" if version else "VidPhen"
+    if styled():
+        console.rule(label, style="bold cyan", align="left")
+    else:
+        print(label)
+
+
+def show_table(title, headers, rows):
+    if styled():
+        table = Table(title=title, title_justify="left", header_style="bold cyan", box=None)
+        for header in headers:
+            table.add_column(header, overflow="fold")
+        for row in rows:
+            table.add_row(*row)
+        console.print(table, width=console.width)
+    else:
+        print(title)
+        for row in rows:
+            print("  " + " | ".join(row))
+
+
+@contextmanager
+def download_progress():
+    if not styled():
+        yield None
+        return
+    with Progress(
+        TextColumn("Downloading", style="cyan"), BarColumn(bar_width=None),
+        TaskProgressColumn(), console=console, transient=True,
+    ) as progress:
+        task = progress.add_task("Downloading", total=100, visible=False)
+
+        def update(value):
+            try:
+                percent = float(value.strip().rstrip("%"))
+            except ValueError:
+                return False
+            progress.update(task, completed=percent, visible=True)
+            return True
+
+        yield update
 
 
 class BackToMenu(Exception):

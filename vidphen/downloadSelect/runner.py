@@ -3,11 +3,12 @@ import pathlib
 import re
 import shutil
 import subprocess
+from tempfile import TemporaryFile
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 from vidphen.configSelect.config import default_location
-from vidphen.contentSelect.ui import prompt
+from vidphen.contentSelect.ui import download_progress, prompt, styled
 
 PLAYLIST_SUBFOLDER = "%(playlist_title)s/%(playlist_index)s - %(title)s.%(ext)s"
 
@@ -77,7 +78,6 @@ def ask_base_dir():
                 print("Choose D for default or C for custom.")
                 continue
             path.mkdir(parents=True, exist_ok=True)
-            from tempfile import TemporaryFile
             with TemporaryFile(dir=path):
                 pass
         except (OSError, ValueError) as error:
@@ -126,6 +126,8 @@ def _collect_file_line(line):
 def _print_args(args):
     """Ask yt-dlp to report the files from this invocation."""
     prints = ["--no-simulate", "--progress", "--newline"]
+    if styled():
+        prints += ["--progress-template", "download:VIDPHEN_PROGRESS:%(progress._percent_str)s"]
     if "--skip-download" not in args:
         prints += ["--print", "after_move:VIDPHEN_FILE:%(filepath)j"]
     if "--write-subs" in args or "--write-automatic-subs" in args:
@@ -189,16 +191,20 @@ def _run_capture(args):
                             encoding="utf-8", errors="replace")
     files = {}
     try:
-        with proc.stdout:
+        with proc.stdout, download_progress() as update:
             for line in proc.stdout:
                 if line.startswith(("VIDPHEN_FILE:", "VIDPHEN_SUBS:")):
                     files.update(dict.fromkeys(_collect_file_line(line)))
+                elif line.startswith("VIDPHEN_PROGRESS:"):
+                    if update is None or not update(line.partition(":")[2]):
+                        _safe_print(line.replace("VIDPHEN_PROGRESS:", "Download: ", 1))
                 else:
                     _safe_print(line)
         proc.wait()
     except KeyboardInterrupt:
-        proc.terminate()
-        proc.wait()
+        if proc.poll() is None:
+            proc.terminate()
+            proc.wait()
         print("\nDownload interrupted. Partial files can be resumed.")
         return (130, list(files))
     return (proc.returncode, list(files))

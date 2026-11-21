@@ -2,7 +2,7 @@ from vidphen.contentSelect import ui, video,playlist
 from vidphen.contentSelect.validators import is_valid_url, parse_url_list, youtube_link_kind
 from vidphen.downloadSelect import downloaderVideo,downloaderPlaylist
 from vidphen.downloadSelect.runner import ask_base_dir
-from vidphen.metaDataSelect.metaData import fetch, format_duration
+from vidphen.metaDataSelect.metaData import fetch, fetch_playlist, format_duration
 from vidphen.subtitleSelect.sub_langs import plan_subs, plan_subs_only
 
 
@@ -39,22 +39,33 @@ def _filter_link_kind(urls, mode):
 
 def _preview_batch(urls):
     """Numbered preview section. Returns list of (url, info)."""
-    from vidphen.contentSelect.ui import close_section, open_section
-    open_section()
-    print(f"{len(urls)} video(s) found:")
     infos = []
+    rows = []
     for i, url in enumerate(urls, 1):
         try:
             info = fetch(url, quiet=True)
         except Exception:
             info = None
         infos.append((url, info))
-        if info:
-            print(f"{i}) {info['title']} - {format_duration(info['duration'])}")
-        else:
-            print(f"{i}) {url} - preview failed")
-    close_section()
+        title, duration = (info["title"], format_duration(info["duration"])) if info else (url, "Preview unavailable")
+        rows.append((str(i), title, duration))
+    ui.show_table("Video preview", ("#", "Video", "Duration"), rows)
     return infos
+
+
+def _preview_playlists(urls):
+    previews = []
+    rows = []
+    for index, url in enumerate(urls, 1):
+        try:
+            info = fetch_playlist(url, quiet=True)
+        except Exception:
+            info = None
+        previews.append((url, info))
+        title, count = (info["title"], str(info["count"])) if info else (url, "Preview unavailable")
+        rows.append((str(index), title, count))
+    ui.show_table("Playlist preview", ("#", "Playlist", "Entries"), rows)
+    return previews
 
 
 def _customize_batch():
@@ -158,10 +169,15 @@ def _record_result(results, title, rc, files, subtitles_only=False):
 
 def _show_results(results):
     all_files = list(dict.fromkeys(path for _, _, files in results for path in files))
-    print(f"Results for {len(results)} links | {len(all_files)} files available")
+    rows = []
     for title, status, files in results:
-        count = f" ({len(files)} files)" if files else ""
-        print(f"  {status}{count} - {title}")
+        count = f" ({len(files)} {'file' if len(files) == 1 else 'files'})" if files else ""
+        rows.append((f"{status}{count}", title))
+    file_label = "file" if len(all_files) == 1 else "files"
+    ui.show_table(
+        f"Results for {len(results)} links | {len(all_files)} {file_label} available",
+        ("Result", "Item"), rows,
+    )
     return all_files
 
 
@@ -178,7 +194,8 @@ def _settings_menu():
         print("2) Open config file location")
         print("3) Check for yt-dlp updates")
         print("4) Back")
-        choice = ui.prompt("Pick 1-4 : ").strip()
+        print("5) Check dependencies")
+        choice = ui.prompt("Pick 1-5 : ").strip()
         if choice == "1":
             from vidphen.configSelect.config import set_default_location
             raw = ui.prompt("Enter new default folder : ").strip().strip('"')
@@ -214,6 +231,9 @@ def _settings_menu():
         elif choice == "4":
             close_section()
             return
+        elif choice == "5":
+            from vidphen.doctor import run_doctor
+            run_doctor()
         else:
             print("Invalid Selection. Try again")
             close_section()
@@ -287,22 +307,7 @@ def _handle_subtitles_playlists():
     if not good:
         print("No valid playlist links. Try again")
         return True
-    from vidphen.contentSelect.ui import close_section as _close, open_section as _open
-    from vidphen.metaDataSelect.metaData import fetch_playlist
-    _open()
-    print(f"{len(good)} playlist(s) found:")
-    pl_infos = []
-    for i, url in enumerate(good, 1):
-        try:
-            info = fetch_playlist(url, quiet=True)
-        except Exception:
-            info = None
-        pl_infos.append((url, info))
-        if info:
-            print(f"{i}) {info['title']} - {info['count']} videos")
-        else:
-            print(f"{i}) {url} - preview failed")
-    _close()
+    pl_infos = _preview_playlists(good)
     while True:
         batch_choice = ui.prompt(f"Download subtitles for these {len(good)} playlist(s)? (y/n) : ").upper()
         if batch_choice in ("Y", "N"):
@@ -360,20 +365,14 @@ def main():
     from vidphen import __version__
     from vidphen.contentSelect.ui import banner
     banner(__version__)
-    from vidphen.doctor import run_doctor
-    run_doctor()
     # Keep workflow cancellation at the menu boundary.
     while True:
-        from vidphen.contentSelect.ui import close_section, open_section
-        open_section()
-        print("What do you want to do?")
-        print("1) Download videos")
-        print("2) Download playlists")
-        print("3) Download subtitles only")
-        print("4) Check settings")
-        print("5) Quit")
-        content = ui.prompt("Pick 1-5 : ", allow_back=False).strip().upper()
-        close_section()
+        ui.show_table(
+            "What do you want to do?", ("Key", "Action"),
+            [("1", "Download videos"), ("2", "Download playlists"),
+             ("3", "Download subtitles"), ("4", "Settings"), ("5", "Quit")],
+        )
+        content = ui.prompt("Choose 1-5: ", allow_back=False).strip().upper()
         content = {"V": "1", "P": "2", "D": "3", "T": "3", "S": "4", "Q": "5"}.get(content, content)
         if content == "5":
             print("Bye!")
@@ -498,22 +497,7 @@ def main():
                 if not good:
                     print("No valid playlist links. Try again")
                     continue
-                from vidphen.contentSelect.ui import close_section as _close, open_section as _open
-                from vidphen.metaDataSelect.metaData import fetch_playlist
-                _open()
-                print(f"{len(good)} playlist(s) found:")
-                pl_infos = []
-                for i, url in enumerate(good, 1):
-                    try:
-                        info = fetch_playlist(url, quiet=True)
-                    except Exception:
-                        info = None
-                    pl_infos.append((url, info))
-                    if info:
-                        print(f"{i}) {info['title']} - {info['count']} videos")
-                    else:
-                        print(f"{i}) {url} - preview failed")
-                _close()
+                pl_infos = _preview_playlists(good)
                 while True:
                     batch_choice = ui.prompt(f"Download these {len(good)} playlist(s)? (y/n) : ").upper()
                     if batch_choice in ("Y", "N"):

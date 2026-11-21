@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [{name = "Phen", email = "thephenpen@gmail.com"}]
 license = "MIT"
 requires-python = ">=3.9"
-dependencies = ["yt-dlp>=2023.0.0"]
+dependencies = ["yt-dlp>=2023.0.0", "rich>=13.7"]
 keywords = ["youtube", "downloader", "yt-dlp", "cli"]
 classifiers = [
     "Environment :: Console",

@@ -13,15 +13,15 @@ YouTube first, but any public link is accepted (public Vimeo / LinkedIn posts et
 - **Dynamic subtitle menu** — built from manual + auto generated captions; `1) No subtitles 2) Video + subtitles` (video/playlist flows); subs only flow picks language only; auto captions fallback offered
 - **Batch control** — `Same for all` vs `Pick per video` for quality/subs (and video range for playlists); picked quality fallback `Auto use best below / Ask me / Skip`
 - **Playlist scope** — `E) Everything R) Range (eg 2-19) S) Specific (eg 1,4,6)`
-- **What next + open** — after `Done: X ok, Y failed`:
+- **What next + open** — after the download summary:
   ```
-  1) Download another
+  1) Main menu
   2) Open download folder
   3) Open downloaded file
   4) Quit
   ```
   Single file opens directly; playlists/batches show a numbered pick list (`1) name … 0) Back`, first 50 shown)
-- **Doctor + updates** — startup check for `Python / yt-dlp / ffmpeg` with install help or auto install; `Settings → Check for yt-dlp updates`; one update and retry offer per run on failure
+- **Doctor + updates** — Settings check for `Python / yt-dlp / ffmpeg` with install help or auto install; `Settings → Check for yt-dlp updates`; one update and retry offer per run on failure
 
 ## Prerequisites
 
@@ -57,7 +57,7 @@ pip install git+https://github.com/PhenPen/vidPhen.git
 vidphen
 ```
 
-First run asks for your default download folder and checks `yt-dlp` / `ffmpeg`.
+The first download asks for your default download folder. Dependency checks are available in Settings.
 
 ## Usage
 
@@ -67,28 +67,30 @@ Main menu (`Pick 1-5`, shortcuts `V`ideos / `P`laylists / `D` or `T` subs / `S`e
 What do you want to do?
 1) Download videos
 2) Download playlists
-3) Download subtitles only
-4) Check settings
+3) Download subtitles
+4) Settings
 5) Quit
 ```
 
-**Videos:** `1 → How many? 1) One 2) Multiple → Enter URL(s) → preview → Download these N? → Quality (same/per) → Subtitles (same/per) → Save Default/Custom → Done → What next 1-4`
-
-**Playlists:** `2 → one/many → preview title + count → Download these N? → Quality / Subtitles / Video range (same/per) → E/R/S scope when per-playlist → Done → What next 1-4`
-
-**Subtitles only:** `3 → 1) Videos 2) Playlists → URLs → preview → language pick (no quality prompt) → Done → What next 1-4` (outputs `.vtt/.srt` via `--write-subs --skip-download`)
+- **Videos:** paste one or more links, preview them, choose quality and subtitles, then choose a folder.
+- **Playlists:** paste playlist links and choose Everything, a range, or specific entries.
+- **Subtitles only:** choose Videos or Playlists, paste links, then select a language. A playlist language preference applies to every selected entry.
+- For batches, settings apply to every item by default. Choose **Customize** to set options per item.
+- Press Enter on an empty line to finish entering links. Type `:back` at a workflow prompt to return to the main menu.
+- VidPhen uses Rich in interactive terminals. Set `NO_COLOR` for plain output.
 
 **Shortcuts:** video quality `1` = Best auto; audio path picks type next; `Advanced` accepts raw IDs (`250`, `247+250`).
 
 ## Settings
 
-`4) Check settings`:
+`4) Settings`:
 
 ```
 1) Change default download folder
 2) Open config file location
 3) Check for yt-dlp updates
 4) Back
+5) Check dependencies
 ```
 
 ## Configuration
@@ -109,8 +111,9 @@ Output names: videos `%(title)s.%(ext)s`, playlists `%(playlist_title)s/%(playli
 vidPhen/
 ├── yT.py                        # Dev shim -> vidphen.cli:main
 ├── pyproject.toml               # Package vidphen 1.0, console script vidphen
-├── requirements.txt             # yt-dlp>=2023.0.0 (mirrors pyproject)
-├── test.py                      # Offline checks, no prompts: python test.py
+├── requirements.txt             # Runtime dependencies (mirrors pyproject)
+├── test.py                      # Offline checks: python test.py
+├── test_cli.py                  # CLI regression checks: python -m unittest test_cli
 ├── vidphen/
 │   ├── __init__.py  __main__.py  cli.py  doctor.py
 │   ├── contentSelect/   # ui, validators, quality, video, playlist, tableShort
@@ -125,9 +128,10 @@ vidPhen/
 
 ```
 yt-dlp>=2023.0.0
+rich>=13.7
 ```
 
-Install with `pip install -e .` (pulls `yt-dlp`) plus `ffmpeg` separately:
+Install with `pip install -e .` (pulls `yt-dlp` and `rich`) plus `ffmpeg` separately:
 
 - Windows: `winget install Gyan.FFmpeg` (then open a NEW terminal)
 - macOS: `brew install ffmpeg`
