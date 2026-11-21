@@ -119,8 +119,7 @@ def plan_subs_only(url=None):
     return ("only", lang_args)
 
 
-_SUB_CACHE = {}
-_LANG_CACHE = {}
+from vidphen.metaDataSelect.metaData import inspect_video
 
 _PRIORITY = [("en", "English"), ("fr", "French"), ("es", "Spanish"), ("de", "German")]
 
@@ -149,26 +148,8 @@ def resolve_lang(requested, subs):
 
 def video_language(url):
     """Video's own language code, or None. Cached per URL."""
-    import subprocess
-    if url in _LANG_CACHE:
-        return _LANG_CACHE[url]
-    try:
-        result = subprocess.run(
-            ['yt-dlp', '--no-playlist', '--skip-download', '--print', '%(language)s', url],
-            capture_output=True, text=True)
-    except FileNotFoundError:
-        _LANG_CACHE[url] = None
-        return None
-    if result.returncode != 0:
-        _LANG_CACHE[url] = None
-        return None
-    for line in (result.stdout or "").splitlines():
-        line = line.strip()
-        if line and not line.startswith("[") and line.lower() not in ("na", "none"):
-            _LANG_CACHE[url] = line
-            return line
-    _LANG_CACHE[url] = None
-    return None
+    info = inspect_video(url)
+    return info["language"] if info else None
 
 
 def resolve_default(subs, url):
@@ -211,41 +192,10 @@ def _flags_for(keys, needs_auto):
 
 def get_sub_langs(url):
     """One lookup: {manual:[codes], auto:[codes], unknown:bool}. Cached per URL."""
-    import json as _json
-    import subprocess
-    if url in _SUB_CACHE:
-        return _SUB_CACHE[url]
-    unknown = {"manual": [], "auto": [], "unknown": True}
-    try:
-        result = subprocess.run(
-            ['yt-dlp', '--no-playlist', '--skip-download', '--print', 'manual:%(subtitles)j',
-             '--print', 'auto:%(automatic_captions)j', url],
-            capture_output=True, text=True, encoding="utf-8", errors="replace")
-    except FileNotFoundError:
-        print("yt-dlp command not found. Install it with: pip install yt-dlp")
-        return unknown
-    if result.returncode != 0:
-        return unknown
-
-    languages = {}
-    for line in (result.stdout or "").splitlines():
-        source, _, payload = line.partition(":")
-        if source not in ("manual", "auto") or source in languages:
-            continue
-        if payload == "NA":
-            languages[source] = []
-            continue
-        try:
-            tracks = _json.loads(payload)
-        except ValueError:
-            continue
-        if tracks is None or isinstance(tracks, dict):
-            languages[source] = sorted(tracks or {})
-    if len(languages) != 2:
-        return unknown
-    subs = {**languages, "unknown": False}
-    _SUB_CACHE[url] = subs
-    return subs
+    info = inspect_video(url)
+    if info is None:
+        return {"manual": [], "auto": [], "unknown": True}
+    return {"manual": info["subtitles"], "auto": info["automatic_captions"], "unknown": False}
 
 
 def build_lang_options(subs):

@@ -54,7 +54,7 @@ _HEIGHTS = {
     "11": 4320,
 }
 
-_AVAIL_CACHE = {}
+from vidphen.metaDataSelect.metaData import inspect_video
 
 
 def show_menu():
@@ -88,49 +88,18 @@ def get_available(url):
     Results cached per URL for the run so menus and fallback checks
     never pay for the same lookup twice.
     """
-    import re as _re
-    from vidphen.contentSelect.tableShort import parse_formats, table_short
-    if url in _AVAIL_CACHE:
-        return _AVAIL_CACHE[url]
-    table = table_short(url, quiet=True)
-    if not table:
-        avail = {"max_height": None, "has_video": True, "has_audio": True, "unknown": True}
-        _AVAIL_CACHE[url] = avail
-        return avail
-    heights, has_video, has_audio = [], False, False
-    for entry in parse_formats(table):
-        text = f"{entry.get('resolution', '')} {entry.get('note', '')}"
-        if "audio" in text.lower():
-            has_audio = True
-        m = _re.search(r"(\d{3,4})[x×](\d{3,4})", text)
-        if m:
-            try:
-                heights.append(int(m.group(2)))
-                has_video = True
-                continue
-            except ValueError:
-                pass
-        m = _re.search(r"\b(\d{3,4})p\d?\b", text)
-        if m:
-            try:
-                heights.append(int(m.group(1)))
-                has_video = True
-            except ValueError:
-                pass
-    heights = [h for h in heights if 100 <= h <= 4320]
-    if heights:
-        has_video = True
-    if not has_video and not has_audio:
-        has_video, has_audio = True, True
-    avail = {
-        "max_height": max(heights) if heights else None,
-        "heights": sorted(set(heights)),
-        "has_video": has_video,
+    metadata = inspect_video(url)
+    formats = metadata["formats"] if metadata else []
+    video = [fmt for fmt in formats if fmt["vcodec"] not in (None, "none")]
+    has_audio = any(fmt["acodec"] not in (None, "none") for fmt in formats)
+    heights = sorted({fmt["height"] for fmt in video if isinstance(fmt["height"], int) and fmt["height"] > 0})
+    return {
+        "max_height": max(heights, default=None),
+        "heights": heights,
+        "has_video": bool(video),
         "has_audio": has_audio,
-        "unknown": False,
+        "unknown": not video and not has_audio,
     }
-    _AVAIL_CACHE[url] = avail
-    return avail
 
 
 def _option_kind(choice, fmt):

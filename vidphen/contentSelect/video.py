@@ -1,5 +1,5 @@
 from vidphen.contentSelect.quality import get_format, show_menu
-from vidphen.contentSelect.tableShort import table_short
+from vidphen.metaDataSelect.metaData import inspect_video
 from vidphen.contentSelect.ui import prompt
 from vidphen.contentSelect.validators import is_valid_format_id
 
@@ -61,8 +61,17 @@ def _advanced_pick(url):
 
 # To select video format (Advanced) - single ID prompt, eg 250 or 247+250
 def videoFormat(url) :
-    if table_short(url) is None:
-        return "best"
+    info = inspect_video(url)
+    if info:
+        from vidphen.contentSelect.ui import show_table
+        rows = [
+            (str(fmt["format_id"]), fmt["ext"] or "-", fmt["resolution"] or "-")
+            for fmt in info["formats"] if fmt["format_id"] is not None
+        ]
+        if rows:
+            show_table("Available formats", ("ID", "Type", "Resolution"), rows)
+    else:
+        print("Could not list formats. Enter a known format ID or use best.")
 
     while True :
         video_ID = prompt('Type format ID (eg 250 for one file, 247+250 for video+audio) : ').strip()

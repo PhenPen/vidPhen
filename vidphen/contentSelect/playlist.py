@@ -1,5 +1,6 @@
 from vidphen.contentSelect.quality import get_format, show_menu
-from vidphen.contentSelect.tableShort import table_short
+from vidphen.contentSelect.video import videoFormat
+from vidphen.metaDataSelect.metaData import fetch_playlist
 from vidphen.contentSelect.ui import prompt
 from vidphen.contentSelect.validators import is_valid_format_id
 
@@ -26,12 +27,11 @@ def playlist(url) :
 
 # To select playlist video format (Advanced) - single ID prompt
 def playlistFormat(url) :
-    if table_short(url, playlist=True) is None:
-        return "bv*+ba/b"
-
-    while True :
-        playlist_ID = prompt('Type format ID (eg 250 for one file, 247+250 for video+audio) : ').strip()
-        if is_valid_format_id(playlist_ID):
-            break
-        print("Invalid format ID. Try again")
-    return playlist_ID
+    info = fetch_playlist(url, quiet=True)
+    if info:
+        sample = next((entry["url"] for entry in info["entries"] if entry["url"]), None)
+        if sample:
+            print("Showing formats from the first available entry. Format IDs can vary by video.")
+            return videoFormat(sample)
+    print("Could not list formats for a playlist entry.")
+    return "bv*+ba/b"

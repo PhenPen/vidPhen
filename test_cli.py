@@ -57,7 +57,7 @@ class SubtitleTests(unittest.TestCase):
         from subprocess import CompletedProcess
         from vidphen.subtitleSelect import sub_langs
 
-        metadata = CompletedProcess([], 0, 'manual:NA\nauto:{"es": []}\n', '')
+        metadata = CompletedProcess([], 0, '{"automatic_captions": {"es": []}}', '')
         with patch("subprocess.run", return_value=metadata):
             subs = sub_langs.get_sub_langs("https://example.com/auto-only")
         self.assertEqual(subs, {"manual": [], "auto": ["es"], "unknown": False})
@@ -201,3 +201,38 @@ class BatchedMenuTests(unittest.TestCase):
         self.assertTrue(all("--skip-download" in call.args[0] for call in run.call_args_list))
         self.assertIn("2 files available", output.getvalue())
         self.assertIn(f"No subtitle file found | {urls[-1]}", output.getvalue())
+
+
+class InspectionTests(unittest.TestCase):
+    def test_preview_formats_and_captions_share_one_process(self):
+        import json
+        from subprocess import CompletedProcess
+        from vidphen.contentSelect import quality
+        from vidphen.metaDataSelect.metaData import fetch, inspect_video
+        from vidphen.subtitleSelect import sub_langs
+
+        self.addCleanup(inspect_video.cache_clear)
+        url = "https://example.com/structured"
+        fixture = {
+            "title": "A title | with a separator", "duration": 42, "language": "es",
+            "formats": [{"height": 720, "vcodec": "avc1", "acodec": "aac"}],
+            "subtitles": {"es": []},
+        }
+        with patch("subprocess.run", return_value=CompletedProcess([], 0, json.dumps(fixture), "")) as run:
+            self.assertEqual(fetch(url, quiet=True)["title"], fixture["title"])
+            self.assertEqual(quality.get_available(url)["heights"], [720])
+            self.assertEqual(sub_langs.get_sub_langs(url)["manual"], ["es"])
+            self.assertEqual(sub_langs.video_language(url), "es")
+        self.assertEqual(run.call_count, 1)
+
+    def test_playlist_title_and_entries_share_one_process(self):
+        from subprocess import CompletedProcess
+        from vidphen.metaDataSelect.metaData import fetch_playlist
+
+        fixture = '{"title":"Course","entries":[{"url":"https://example.com/clip"},null]}'
+        with patch("subprocess.run", return_value=CompletedProcess([], 0, fixture, "")) as run:
+            playlist = fetch_playlist("https://example.com/course", quiet=True)
+        self.assertEqual((playlist["title"], playlist["count"]), ("Course", 2))
+        self.assertEqual(playlist["entries"][1]["index"], 2)
+        self.assertIn("--flat-playlist", run.call_args.args[0])
+        self.assertEqual(run.call_count, 1)

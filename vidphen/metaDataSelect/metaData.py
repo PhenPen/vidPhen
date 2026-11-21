@@ -1,12 +1,14 @@
 # Video/playlist metadata preview via yt-dlp (no download)
+import json
 import subprocess
+from functools import lru_cache
 
 
 def format_duration(raw):
     """Convert seconds (eg '658') to '10m 58s'. Hours when needed."""
     try:
         total = int(float(str(raw).strip()))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return "unknown"
     if total < 0:
         return "unknown"
@@ -19,59 +21,76 @@ def format_duration(raw):
     return f"{s}s"
 
 
-def fetch(url, quiet=False):
-    """Return {title, uploader, duration, url} or None. No download."""
+def _inspect(url, options):
     try:
         result = subprocess.run(
-            ['yt-dlp', '--no-playlist', '--skip-download', '--print',
-             '%(title)s|%(uploader)s|%(duration)s|%(webpage_url)s', url],
-            capture_output=True, text=True)
-    except FileNotFoundError:
-        print("yt-dlp command not found. Install it with: pip install yt-dlp")
+            ["yt-dlp", *options, "--dump-single-json", "--skip-download",
+             "--socket-timeout", "10", "--", url],
+            capture_output=True, encoding="utf-8", errors="replace", timeout=45,
+        )
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            if isinstance(data, dict):
+                return data
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        pass
+    return None
+
+
+@lru_cache(maxsize=256)
+def inspect_video(url):
+    """Return metadata, formats, and captions from a single lookup."""
+    data = _inspect(url, ["--no-playlist"])
+    if data is None or "entries" in data:
         return None
-    if result.returncode != 0:
-        print(result.stderr or "Failed to fetch metadata")
-        return None
-    lines = (result.stdout or "").strip().splitlines()
-    if not lines:
-        return None
-    parts = lines[0].split("|")
-    info = {
-        "title": parts[0] if len(parts) > 0 else "",
-        "uploader": parts[1] if len(parts) > 1 else "",
-        "duration": parts[2] if len(parts) > 2 else "",
-        "url": parts[3] if len(parts) > 3 else url,
+    return {
+        "title": data.get("title") or url,
+        "uploader": data.get("uploader"),
+        "duration": data.get("duration"),
+        "url": data.get("webpage_url") or url,
+        "language": data.get("language"),
+        "formats": [
+            {key: fmt.get(key) for key in ("format_id", "ext", "resolution", "height", "acodec", "vcodec")}
+            for fmt in (data.get("formats") or [data]) if isinstance(fmt, dict)
+        ],
+        "subtitles": sorted(data.get("subtitles") or {}),
+        "automatic_captions": sorted(data.get("automatic_captions") or {}),
     }
+
+
+def fetch(url, quiet=False):
+    info = inspect_video(url)
     if not quiet:
-        print(f"Title: {info['title']}")
-        print(f"Uploader: {info['uploader']}")
-        print(f"Duration: {format_duration(info['duration'])}")
+        if info:
+            print(f"Title: {info['title']}")
+            print(f"Uploader: {info['uploader'] or 'unknown'}")
+            print(f"Duration: {format_duration(info['duration'])}")
+        else:
+            print(f"Could not inspect video: {url}")
     return info
 
 
+@lru_cache(maxsize=32)
+def _inspect_playlist(url):
+    data = _inspect(url, ["--yes-playlist", "--flat-playlist"])
+    if data is None or not isinstance(data.get("entries"), list):
+        return None
+    entries = []
+    for index, entry in enumerate(data["entries"], 1):
+        entry = entry or {}
+        entries.append({
+            "index": entry.get("playlist_index") or index,
+            "url": entry.get("webpage_url") or entry.get("url"),
+        })
+    return {"title": data.get("title") or url, "count": len(entries), "url": url, "entries": entries}
+
+
 def fetch_playlist(url, quiet=False):
-    """Return {title, count, url} for playlists. No download. None on failure."""
-    try:
-        title_res = subprocess.run(
-            ['yt-dlp', '--yes-playlist', '--skip-download', '--flat-playlist', '--print',
-             '%(playlist_title)s', '--playlist-items', '1', url],
-            capture_output=True, text=True)
-        list_res = subprocess.run(
-            ['yt-dlp', '--yes-playlist', '--skip-download', '--flat-playlist', '--print',
-             '%(title)s', url],
-            capture_output=True, text=True)
-    except FileNotFoundError:
-        print("yt-dlp command not found. Install it with: pip install yt-dlp")
-        return None
-    if list_res.returncode != 0:
-        return None
-    videos = [l for l in (list_res.stdout or "").splitlines()
-              if l.strip() and not l.strip().startswith("[")]
-    title_lines = [l for l in (title_res.stdout or "").splitlines()
-                   if l.strip() and not l.strip().startswith("[")]
-    title = title_lines[0].strip() if title_lines else "Playlist"
-    info = {"title": title, "count": len(videos), "url": url}
+    info = _inspect_playlist(url)
     if not quiet:
-        print(f"Playlist: {info['title']}")
-        print(f"Videos: {info['count']}")
+        if info:
+            print(f"Playlist: {info['title']}")
+            print(f"Videos: {info['count']}")
+        else:
+            print(f"Could not inspect playlist: {url}")
     return info
