@@ -338,7 +338,7 @@ def _handle_subtitles_playlists():
     else:
         subs_scope, range_scope = "all", "per"
     if subs_scope == "all":
-        sub_mode, sub_args = plan_subs_only(good[0] if len(good) == 1 else None)
+        sub_mode, sub_args = plan_subs_only()
     else:
         sub_mode, sub_args = "none", []
     if sub_mode == "none" and subs_scope == "all":
@@ -358,7 +358,7 @@ def _handle_subtitles_playlists():
         cur_mode, cur_args = sub_mode, sub_args
         if subs_scope == "per":
             print(f"Subtitles for playlist {i}/{len(good)}:")
-            cur_mode, cur_args = plan_subs_only(url)
+            cur_mode, cur_args = plan_subs_only()
         if cur_mode == "none":
             print("Skipped: no subtitles.")
             skipped += 1
@@ -573,7 +573,7 @@ def main():
             else:
                 ID = None
             if subs_scope == "all":
-                sub_mode, sub_args = plan_subs(good[0] if len(good) == 1 else None, allow_only=False)
+                sub_mode, sub_args = plan_subs(allow_only=False)
             else:
                 sub_mode, sub_args = "none", []
             if range_scope == "all":
@@ -594,7 +594,7 @@ def main():
                 cur_mode, cur_args = sub_mode, sub_args
                 if subs_scope == "per":
                     print(f"Subtitles for playlist {i}/{len(good)}:")
-                    cur_mode, cur_args = plan_subs(url, allow_only=False)
+                    cur_mode, cur_args = plan_subs(allow_only=False)
                 try:
                     rc, files = downloaderPlaylist.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope or downloaderPlaylist.plan_scope(info["count"] if info else None))
                 except Exception as e:

@@ -154,7 +154,7 @@ def video_language(url):
         return _LANG_CACHE[url]
     try:
         result = subprocess.run(
-            ['yt-dlp', '--skip-download', '--print', '%(language)s', url],
+            ['yt-dlp', '--no-playlist', '--skip-download', '--print', '%(language)s', url],
             capture_output=True, text=True)
     except FileNotFoundError:
         _LANG_CACHE[url] = None
@@ -215,32 +215,35 @@ def get_sub_langs(url):
     import subprocess
     if url in _SUB_CACHE:
         return _SUB_CACHE[url]
+    unknown = {"manual": [], "auto": [], "unknown": True}
     try:
         result = subprocess.run(
-            ['yt-dlp', '--skip-download', '--print', '%(subtitles)j',
-             '--print', '%(automatic_captions)j', url],
-            capture_output=True, text=True)
+            ['yt-dlp', '--no-playlist', '--skip-download', '--print', 'manual:%(subtitles)j',
+             '--print', 'auto:%(automatic_captions)j', url],
+            capture_output=True, text=True, encoding="utf-8", errors="replace")
     except FileNotFoundError:
         print("yt-dlp command not found. Install it with: pip install yt-dlp")
-        unknown = {"manual": [], "auto": [], "unknown": True}
-        _SUB_CACHE[url] = unknown
         return unknown
     if result.returncode != 0:
-        unknown = {"manual": [], "auto": [], "unknown": True}
-        _SUB_CACHE[url] = unknown
         return unknown
-    found = []
+
+    languages = {}
     for line in (result.stdout or "").splitlines():
-        line = line.strip()
-        if not line.startswith("{"):
+        source, _, payload = line.partition(":")
+        if source not in ("manual", "auto") or source in languages:
+            continue
+        if payload == "NA":
+            languages[source] = []
             continue
         try:
-            found.append(_json.loads(line))
+            tracks = _json.loads(payload)
         except ValueError:
-            pass
-    manual = sorted({str(k) for d in found[:1] for k in d}) if found else []
-    auto = sorted({str(k) for d in found[1:2] for k in d}) if len(found) > 1 else []
-    subs = {"manual": manual, "auto": auto, "unknown": False}
+            continue
+        if tracks is None or isinstance(tracks, dict):
+            languages[source] = sorted(tracks or {})
+    if len(languages) != 2:
+        return unknown
+    subs = {**languages, "unknown": False}
     _SUB_CACHE[url] = subs
     return subs
 

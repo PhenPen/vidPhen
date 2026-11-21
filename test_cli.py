@@ -50,3 +50,29 @@ class PlaylistScopeTests(unittest.TestCase):
             scope = downloaderPlaylist.plan_scope()
         self.assertEqual(scope, ("E",))
         self.assertNotIn("--playlist-end", downloaderPlaylist._scope_to_args(scope))
+
+
+class SubtitleTests(unittest.TestCase):
+    def test_auto_track_is_detected_when_manual_tracks_are_missing(self):
+        from subprocess import CompletedProcess
+        from vidphen.subtitleSelect import sub_langs
+
+        metadata = CompletedProcess([], 0, 'manual:NA\nauto:{"es": []}\n', '')
+        with patch("subprocess.run", return_value=metadata):
+            subs = sub_langs.get_sub_langs("https://example.com/auto-only")
+        self.assertEqual(subs, {"manual": [], "auto": ["es"], "unknown": False})
+        self.assertEqual(sub_langs.resolve_lang("es", subs), (["es"], True))
+
+    def test_subtitle_playlist_keeps_language_choice_for_all_items(self):
+        url = "https://www.youtube.com/playlist?list=playlist"
+        with patch.object(downloaderPlaylist, "run_yt_dlp_capture") as download:
+            downloaderPlaylist.downloader(
+                "best", url, sub_mode="only",
+                sub_args=["--sub-langs", "es", "--write-automatic-subs"],
+                base_dir="downloads", scope=("E",),
+            )
+        args = download.call_args.args[0]
+        self.assertIn("--skip-download", args)
+        self.assertIn("--write-automatic-subs", args)
+        self.assertIn("--ignore-errors", args)
+        self.assertNotIn("-f", args)
