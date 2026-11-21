@@ -76,3 +76,23 @@ class SubtitleTests(unittest.TestCase):
         self.assertIn("--write-automatic-subs", args)
         self.assertIn("--ignore-errors", args)
         self.assertNotIn("-f", args)
+
+
+class FormatTests(unittest.TestCase):
+    def test_ffmpeg_check_ignores_plus_in_url(self):
+        from vidphen.downloadSelect import runner
+
+        args = ["--skip-download", "https://example.com/watch?a+b"]
+        self.assertFalse(runner.needs_ffmpeg(args))
+        self.assertTrue(runner.needs_ffmpeg(["-f", "247+250", args[-1]]))
+        self.assertTrue(runner.needs_ffmpeg(["--extract-audio", args[-1]]))
+
+    def test_missing_ffmpeg_fallback_keeps_resolution_cap(self):
+        from vidphen.contentSelect.quality import get_format
+        from vidphen.downloadSelect import runner
+
+        with redirect_stdout(io.StringIO()):
+            args = runner._without_merges(["-f", get_format("4"), "https://example.com/video"])
+        self.assertIsNotNone(args)
+        self.assertTrue(all("height<=1080" in choice for choice in args[1].split("/")))
+        self.assertIsNone(runner._without_merges(["-f", "247+250"]))

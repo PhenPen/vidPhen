@@ -40,9 +40,23 @@ def ensure_ffmpeg():
 
 
 def needs_ffmpeg(args):
-    """Detect merge (247+250 / bv*+ba) or --extract-audio in yt-dlp args."""
-    text = " ".join(args)
-    return ("--extract-audio" in args) or ("+" in text)
+    """Check conversion and explicit merge selectors."""
+    if "--extract-audio" in args:
+        return True
+    if "-f" not in args:
+        return False
+    return "+" in args[args.index("-f") + 1]
+
+
+def _without_merges(args):
+    if "--extract-audio" in args or "-f" not in args:
+        return None
+    index = args.index("-f") + 1
+    choices = [choice for choice in args[index].split("/") if "+" not in choice]
+    if not choices:
+        return None
+    print("FFmpeg unavailable. Trying formats that already contain audio and video.")
+    return [*args[:index], "/".join(choices), *args[index + 1:]]
 
 
 def ask_base_dir():
@@ -260,9 +274,12 @@ def run_yt_dlp_capture(args):
     """Run yt-dlp, stream progress, return (returncode|None, files[])."""
     if not ensure_yt_dlp():
         return (None, [])
-    if needs_ffmpeg(args) and not ensure_ffmpeg():
-        print("Stopped before download so you don't get a broken file.")
-        return (None, [])
+    if needs_ffmpeg(args) and shutil.which("ffmpeg") is None:
+        fallback = _without_merges(args)
+        if fallback is None:
+            ensure_ffmpeg()
+            return (None, [])
+        args = fallback
     start = time.time()
     try:
         rc, files = _run_capture(_print_args(args))

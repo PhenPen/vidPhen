@@ -483,31 +483,29 @@ def main():
                 _picked = picked_height(_fmt)
                 if _picked and fallback_policy in ("ask", "skip"):
                     print(f"Checking available quality ({i}/{len(good)})...")
-                    _max = get_available(url).get("max_height")
-                    if _max and _max < _picked:
-                        if fallback_policy == "skip":
-                            print(f"Skipped: best is {_max}p, picked {_picked}p")
+                    available = get_available(url)
+                    heights = available.get("heights", [])
+                    if heights and _picked not in heights:
+                        lower = max((height for height in heights if height < _picked), default=None)
+                        if fallback_policy == "skip" or lower is None:
+                            print(f"Skipped: {_picked}p unavailable"
+                                  + (f" (best below it: {lower}p)." if lower else "."))
                             skipped += 1
                             continue
-                        elif fallback_policy == "ask":
-                            from vidphen.contentSelect.ui import close_section, open_section
-                            open_section()
-                            print(f"Video {i}/{len(good)}: {titles.get(url, url)}")
-                            print(f"Picked: {_picked}p | Best available: {_max}p")
-                            print("1) Download lower for this video")
-                            print("2) Skip this video")
-                            print("3) Lower for this + all remaining")
-                            while True:
-                                fc = ui.prompt("Pick 1-3 : ").strip()
-                                if fc in ("1", "2", "3"):
-                                    break
-                                print("Invalid Selection. Try again")
-                            close_section()
-                            if fc == "2":
-                                skipped += 1
-                                continue
-                            if fc == "3":
-                                fallback_policy = "auto"
+                        print(f"Picked: {_picked}p | Best below it: {lower}p")
+                        print("1) Download lower for this video")
+                        print("2) Skip this video")
+                        print("3) Allow lower for remaining videos too")
+                        while True:
+                            choice = ui.prompt("Pick 1-3 : ").strip()
+                            if choice in ("1", "2", "3"):
+                                break
+                            print("Invalid selection. Try again")
+                        if choice == "2":
+                            skipped += 1
+                            continue
+                        if choice == "3":
+                            fallback_policy = "auto"
                 try:
                     rc, files = downloaderVideo.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir)
                 except Exception as e:
