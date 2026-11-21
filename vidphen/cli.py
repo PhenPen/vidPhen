@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from vidphen.contentSelect import ui, video,playlist
 from vidphen.contentSelect.validators import is_valid_url, parse_url_list, youtube_link_kind
 from vidphen.downloadSelect import downloaderVideo,downloaderPlaylist
@@ -7,21 +9,33 @@ from vidphen.subtitleSelect.sub_langs import plan_subs, plan_subs_only
 
 
 
-def _prompt_url_list(prompt_text):
-    """Paste one per line (empty line finishes); commas/spaces also ok."""
+def _prompt_url_list(prompt_text, on_link=None):
+    """Accept one or more links per line and queue each new valid link."""
     print(prompt_text)
     print("Press Enter on an empty line when done. Type :back to return to the main menu.")
-    lines = []
+    good, bad, seen = [], [], set()
+    line_number = 1
     while True:
-        line = ui.prompt(f"Link {len(lines) + 1} (empty line to finish) : ")
+        line = ui.prompt(f"Link {line_number} (empty line to finish) : ")
         if not line.strip():
-            break
-        lines.append(line)
-    duplicates = []
-    good, bad = parse_url_list("\n".join(lines), duplicates=duplicates)
-    for url in duplicates:
-        print(f"Skipped duplicate link: {url}")
-    return good, bad
+            return good, bad
+        line_number += 1
+        duplicates = []
+        valid, invalid = parse_url_list(line, duplicates=duplicates)
+        for url in valid:
+            if url in seen:
+                duplicates.append(url)
+                continue
+            seen.add(url)
+            good.append(url)
+            if on_link:
+                on_link(url)
+        for url in invalid:
+            if url not in seen:
+                bad.append(url)
+                seen.add(url)
+        for url in duplicates:
+            print(f"Skipped duplicate link: {url}")
 
 
 def _filter_link_kind(urls, mode):
@@ -37,34 +51,51 @@ def _filter_link_kind(urls, mode):
     return accepted
 
 
-def _preview_batch(urls):
-    """Numbered preview section. Returns list of (url, info)."""
-    infos = []
-    rows = []
-    for i, url in enumerate(urls, 1):
-        try:
-            info = fetch(url, quiet=True)
-        except Exception:
-            info = None
-        infos.append((url, info))
-        title, duration = (info["title"], format_duration(info["duration"])) if info else (url, "Preview unavailable")
-        rows.append((str(i), title, duration))
-    ui.show_table("Video preview", ("#", "Video", "Duration"), rows)
-    return infos
+def _collect_previews(mode):
+    inspect = fetch if mode == "video" else fetch_playlist
+    executor = ThreadPoolExecutor(max_workers=3)
+    pending = {}
 
+    def queue(url):
+        if _filter_link_kind([url], mode):
+            pending[executor.submit(inspect, url, quiet=True)] = url
 
-def _preview_playlists(urls):
-    previews = []
+    try:
+        _, bad = _prompt_url_list(f"Paste one or more {mode} links.", on_link=queue)
+        for link in bad:
+            print(f"Skipped invalid link: {link}")
+        if not pending:
+            print(f"No valid {mode} links. Try again")
+            return []
+        ready = {future for future in pending if future.done()}
+        waiting = [future for future in pending if future not in ready]
+        if waiting:
+            print(f"Preview: {len(ready)} ready, {len(waiting)} still checking")
+            for future, url in pending.items():
+                if future in ready:
+                    info = future.result()
+                    print(f"  Ready: {info['title']}" if info else f"  Preview unavailable: {url}")
+                else:
+                    print(f"  Checking: {url}")
+            for future in as_completed(waiting):
+                info = future.result()
+                print(f"  Ready: {info['title']}" if info else f"  Preview unavailable: {pending[future]}")
+        previews = [(url, future.result()) for future, url in pending.items()]
+    except KeyboardInterrupt:
+        print("\nPreview cancelled.")
+        raise ui.BackToMenu from None
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    value_label = "Duration" if mode == "video" else "Entries"
     rows = []
-    for index, url in enumerate(urls, 1):
-        try:
-            info = fetch_playlist(url, quiet=True)
-        except Exception:
-            info = None
-        previews.append((url, info))
-        title, count = (info["title"], str(info["count"])) if info else (url, "Preview unavailable")
-        rows.append((str(index), title, count))
-    ui.show_table("Playlist preview", ("#", "Playlist", "Entries"), rows)
+    for index, (url, info) in enumerate(previews, 1):
+        if info:
+            value = format_duration(info["duration"]) if mode == "video" else str(info["count"])
+            rows.append((str(index), info["title"], value))
+        else:
+            rows.append((str(index), url, "Preview unavailable"))
+    ui.show_table(f"{mode.title()} preview", ("#", mode.title(), value_label), rows)
     return previews
 
 
@@ -241,16 +272,10 @@ def _settings_menu():
 
 def _handle_subtitles_videos():
     """Subtitles-only flow for videos. No quality prompt. Returns False to quit app."""
-    good, bad = _prompt_url_list("Paste one or more video links.")
-    if bad:
-        print(f"Skipped {len(bad)} invalid link(s):")
-        for b in bad:
-            print(f"  - {b}")
-    good = _filter_link_kind(good, "video")
-    if not good:
-        print("No valid video links. Try again")
+    infos = _collect_previews("video")
+    if not infos:
         return True
-    infos = _preview_batch(good)
+    good = [url for url, _ in infos]
     while True:
         batch_choice = ui.prompt(f"Download subtitles for these {len(good)} video(s)? (y/n) : ").upper()
         if batch_choice in ("Y", "N"):
@@ -298,16 +323,10 @@ def _handle_subtitles_videos():
 
 def _handle_subtitles_playlists():
     """Subtitles-only flow for playlists. No quality prompt. Returns False to quit app."""
-    good, bad = _prompt_url_list("Paste one or more playlist links.")
-    if bad:
-        print(f"Skipped {len(bad)} invalid link(s):")
-        for b in bad:
-            print(f"  - {b}")
-    good = _filter_link_kind(good, "playlist")
-    if not good:
-        print("No valid playlist links. Try again")
+    pl_infos = _collect_previews("playlist")
+    if not pl_infos:
         return True
-    pl_infos = _preview_playlists(good)
+    good = [url for url, _ in pl_infos]
     while True:
         batch_choice = ui.prompt(f"Download subtitles for these {len(good)} playlist(s)? (y/n) : ").upper()
         if batch_choice in ("Y", "N"):
@@ -395,16 +414,10 @@ def main():
                     return
                 continue
             if content == "1":
-                good, bad = _prompt_url_list("Paste one or more video links.")
-                if bad:
-                    print(f"Skipped {len(bad)} invalid link(s):")
-                    for b in bad:
-                        print(f"  - {b}")
-                good = _filter_link_kind(good, "video")
-                if not good:
-                    print("No valid video links. Try again")
+                infos = _collect_previews("video")
+                if not infos:
                     continue
-                infos = _preview_batch(good)
+                good = [url for url, _ in infos]
                 while True:
                     batch_choice = ui.prompt(f"Download these {len(good)} video(s)? (y/n) : ").upper()
                     if batch_choice in ("Y", "N"):
@@ -488,16 +501,10 @@ def main():
                         break
                 last_base_dir, last_files = base_dir, _show_results(results)
             elif content == "2":
-                good, bad = _prompt_url_list("Paste one or more playlist links.")
-                if bad:
-                    print(f"Skipped {len(bad)} invalid link(s):")
-                    for b in bad:
-                        print(f"  - {b}")
-                good = _filter_link_kind(good, "playlist")
-                if not good:
-                    print("No valid playlist links. Try again")
+                pl_infos = _collect_previews("playlist")
+                if not pl_infos:
                     continue
-                pl_infos = _preview_playlists(good)
+                good = [url for url, _ in pl_infos]
                 while True:
                     batch_choice = ui.prompt(f"Download these {len(good)} playlist(s)? (y/n) : ").upper()
                     if batch_choice in ("Y", "N"):

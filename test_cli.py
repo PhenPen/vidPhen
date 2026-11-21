@@ -236,3 +236,29 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(playlist["entries"][1]["index"], 2)
         self.assertIn("--flat-playlist", run.call_args.args[0])
         self.assertEqual(run.call_count, 1)
+
+
+class BackgroundPreviewTests(unittest.TestCase):
+    def test_lookup_starts_while_next_prompt_is_open(self):
+        from threading import Event
+
+        started = Event()
+        release = Event()
+        calls = iter(["https://example.com/one,https://example.com/two", "https://example.com/one", ""])
+
+        def fetch(url, quiet):
+            started.set()
+            self.assertTrue(release.wait(2))
+            return {"title": url, "duration": 1}
+
+        def prompt(_):
+            answer = next(calls)
+            if answer == "https://example.com/one":
+                self.assertTrue(started.wait(2))
+                release.set()
+            return answer
+
+        with patch.object(cli.ui, "prompt", side_effect=prompt), patch.object(cli, "fetch", side_effect=fetch) as inspect, redirect_stdout(io.StringIO()):
+            previews = cli._collect_previews("video")
+        self.assertEqual([url for url, _ in previews], ["https://example.com/one", "https://example.com/two"])
+        self.assertEqual(inspect.call_count, 2)
