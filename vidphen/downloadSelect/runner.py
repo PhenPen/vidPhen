@@ -1,16 +1,10 @@
+import json
 import pathlib
 import re
 import shutil
 import subprocess
-import time
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
-
-# Suffixes yt-dlp leaves behind for unfinished work - never offer these.
-_PARTIAL_SUFFIXES = {".part", ".ytdl", ".temp", ".tmp", ".part-frag"}
-
-# Cap so a big folder never floods the picker.
-FALLBACK_LIMIT = 20
 
 from vidphen.configSelect.config import default_location
 from vidphen.contentSelect.ui import prompt
@@ -90,53 +84,42 @@ def build_playlist_template(base_dir):
     return f'{base}/{PLAYLIST_SUBFOLDER}'
 
 
-def _collect_file_line(line, base_dir=None):
-    """yt-dlp --print filepath line -> absolute path or None. Pure.
-
-    Tolerates ANSI colours, surrounding quotes, and `\\\\?\\`-prefixed
-    Windows paths. Relative prints resolve against base_dir/cwd.
-    """
-    text = _ANSI_RE.sub("", line or "").strip().strip('"').strip("'").strip()
-    if text.startswith("\\\\?\\"):
-        text = text[4:]
-    if not text or text.startswith("["):
-        return None
+def _collect_file_line(line):
+    """Read explicitly reported paths and verify they exist."""
+    source, _, payload = line.strip().partition(":")
+    if source not in ("VIDPHEN_FILE", "VIDPHEN_SUBS"):
+        return []
     try:
-        p = pathlib.Path(text).expanduser()
-    except Exception:
-        return None
-    try:
-        if not p.is_absolute() and base_dir:
-            cand = pathlib.Path(str(base_dir)).expanduser() / p
-            if cand.is_file():
-                return str(cand.resolve())
-        if p.is_file():
-            return str(p.resolve())
-    except OSError:
-        return None
-    return None
-
-
-def _looks_like_url(s):
-    s = str(s)
-    return bool(s) and not s.startswith("-") and ("." in s)
+        value = json.loads(payload)
+    except ValueError:
+        return []
+    if source == "VIDPHEN_FILE":
+        paths = [value]
+    elif isinstance(value, dict):
+        paths = [track.get("filepath") for track in value.values() if isinstance(track, dict)]
+    else:
+        paths = []
+    files = []
+    for path in paths:
+        if not isinstance(path, str):
+            continue
+        try:
+            candidate = pathlib.Path(path)
+            if candidate.is_file():
+                files.append(str(candidate.resolve()))
+        except OSError:
+            continue
+    return files
 
 
 def _print_args(args):
-    """Insert filepath prints BEFORE the trailing URL so yt-dlp emits them.
-
-    Appending `--print` after the URL applies to "the next URL" (none)
-    on some versions, yielding rc 0 with zero captured paths. Both
-    `after_move:filepath` (media) and `filepath` (subs-only
-    `--skip-download`) are requested.
-    """
-    full = list(args)
-    if "--print" in full:
-        return full
-    prints = ["--print", "after_move:filepath", "--print", "filepath"]
-    if full and _looks_like_url(full[-1]):
-        return full[:-1] + prints + full[-1:]
-    return full + prints
+    """Ask yt-dlp to report the files from this invocation."""
+    prints = ["--no-simulate", "--progress", "--newline"]
+    if "--skip-download" not in args:
+        prints += ["--print", "after_move:VIDPHEN_FILE:%(filepath)j"]
+    if "--write-subs" in args or "--write-automatic-subs" in args:
+        prints += ["--print", "before_dl:VIDPHEN_SUBS:%(requested_subtitles)j"]
+    return [*prints, *args]
 
 
 def _offer_update_and_retry(args, _run):
@@ -167,9 +150,7 @@ def _offer_update_and_retry(args, _run):
     except FileNotFoundError:
         print("yt-dlp command not found after update.")
         return None
-    if rc == 0:
-        print("Download Completed")
-    else:
+    if rc != 0:
         print("Still failing after update - see causes above.")
     return (rc, files)
 
@@ -186,70 +167,6 @@ def _safe_print(line):
             pass
 
 
-def _base_dir_from_args(args):
-    """Recover the download folder from the `-o` template arg. None if unknown."""
-    items = list(args)
-    try:
-        tmpl = str(items[items.index("-o") + 1])
-    except (ValueError, IndexError):
-        return None
-    base = tmpl.split("%(", 1)[0].rstrip("/\\")
-    if not base:
-        return None
-    try:
-        p = pathlib.Path(base).expanduser()
-    except Exception:
-        return None
-    try:
-        if p.is_dir():
-            return str(p)
-    except OSError:
-        return None
-    return None
-
-
-def _fallback_newest(base_dir, since, limit=FALLBACK_LIMIT):
-    """Newest finished files written during the run. Pure-ish (reads dir).
-
-    Backup for when yt-dlp's `--print` lines can't be parsed (exotic
-    characters, skips). Ignores partials, oldest-first excluded.
-    """
-    try:
-        root = pathlib.Path(str(base_dir)).expanduser()
-    except Exception:
-        return []
-    try:
-        if not root.is_dir():
-            return []
-    except OSError:
-        return []
-    scored = []
-    try:
-        entries = list(root.rglob("*"))
-    except OSError:
-        return []
-    for p in entries:
-        try:
-            if not p.is_file():
-                continue
-            if p.suffix.lower() in _PARTIAL_SUFFIXES:
-                continue
-            mtime = p.stat().st_mtime
-        except OSError:
-            continue
-        if mtime < since - 5:
-            continue
-        scored.append((mtime, p))
-    scored.sort(key=lambda item: item[0], reverse=True)
-    out = []
-    for _, p in scored[:limit]:
-        try:
-            out.append(str(p.resolve()))
-        except OSError:
-            continue
-    return out
-
-
 def _run_capture(args):
     """Popen tee: stream yt-dlp output live, collect printed filepaths.
 
@@ -259,15 +176,21 @@ def _run_capture(args):
     proc = subprocess.Popen(['yt-dlp'] + args, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True, bufsize=1,
                             encoding="utf-8", errors="replace")
-    files, seen = [], set()
-    for line in proc.stdout:
-        _safe_print(line)
-        found = _collect_file_line(line)
-        if found and found not in seen:
-            seen.add(found)
-            files.append(found)
-    proc.wait()
-    return (proc.returncode, files)
+    files = {}
+    try:
+        with proc.stdout:
+            for line in proc.stdout:
+                if line.startswith(("VIDPHEN_FILE:", "VIDPHEN_SUBS:")):
+                    files.update(dict.fromkeys(_collect_file_line(line)))
+                else:
+                    _safe_print(line)
+        proc.wait()
+    except KeyboardInterrupt:
+        proc.terminate()
+        proc.wait()
+        print("\nDownload interrupted. Partial files can be resumed.")
+        return (130, list(files))
+    return (proc.returncode, list(files))
 
 
 def run_yt_dlp_capture(args):
@@ -280,31 +203,15 @@ def run_yt_dlp_capture(args):
             ensure_ffmpeg()
             return (None, [])
         args = fallback
-    start = time.time()
     try:
         rc, files = _run_capture(_print_args(args))
     except FileNotFoundError:
         print("yt-dlp command not found. Install it with: pip install yt-dlp")
         return (None, [])
     if rc == 0 and not files:
-        # Print-capture missed (exotic names, skips): fall back to the
-        # newest files actually written during this run.
-        fallback = _fallback_newest(_base_dir_from_args(args), start)
-        if fallback:
-            files = fallback
-            if len(files) <= 5:
-                for f in files:
-                    print(f"Saved: {pathlib.Path(f).name}")
-            else:
-                print(f"Saved {len(files)} files - open the folder to browse")
-    if rc == 0:
-        print("Download Completed")
-    else:
-        print("Download failed. Common causes:")
-        print("- Private / age-restricted / login-required video")
-        print("- No internet or the site blocked the request (try again)")
-        print("- File already exists and --no-overwrites skipped it (check folder)")
-        print("- Picked format not available (try 1) Best)")
+        print("No output file was found.")
+    elif rc not in (0, 130) and not files:
+        print("Download failed. Check the downloader message above.")
         if not _UPDATE_OFFERED:
             retried = _offer_update_and_retry(args, _run_capture)
             if retried is not None:

@@ -161,18 +161,25 @@ def _ask_next(base_dir=None, files=None):
         print("Invalid Selection. Try again")
 
 
-def _report_done(ok, failed, skipped, unverified, total):
-    """Honest end-of-batch summary.
+def _record_result(results, title, rc, files, subtitles_only=False):
+    if files and rc == 0:
+        status = "Files found"
+    elif files:
+        status = "Partial download"
+    elif rc == 0:
+        status = "No subtitle file found" if subtitles_only else "No output file found"
+    else:
+        status = "Interrupted" if rc == 130 else "Failed"
+    results.append((title, status, files))
 
-    rc 0 with no captured file is reported as unverified (not ok),
-    so counts never claim success with nothing to open.
-    """
-    parts = [f"{ok} ok", f"{failed} failed"]
-    if skipped:
-        parts.append(f"{skipped} skipped")
-    if unverified:
-        parts.append(f"{unverified} completed but file not located - check folder")
-    print(f"Done: {', '.join(parts)} out of {total}")
+
+def _show_results(results):
+    all_files = list(dict.fromkeys(path for _, _, files in results for path in files))
+    print(f"Results for {len(results)} links | {len(all_files)} files available")
+    for title, status, files in results:
+        count = f" ({len(files)} files)" if files else ""
+        print(f"  {status}{count} - {title}")
+    return all_files
 
 
 def _settings_menu():
@@ -265,8 +272,7 @@ def _handle_subtitles_videos():
         return True
     base_dir = ask_base_dir()
     titles = {url: (info["title"] if info else url) for url, info in infos}
-    ok, failed, skipped, unverified = 0, 0, 0, 0
-    all_files = []
+    results = []
     for i, url in enumerate(good, 1):
         print(f"--- Subtitles {i}/{len(good)}: {titles.get(url, url)} ---")
         cur_mode, cur_args = sub_mode, sub_args
@@ -275,23 +281,17 @@ def _handle_subtitles_videos():
             cur_mode, cur_args = plan_subs_only(url)
         if cur_mode == "none":
             print("Skipped: no subtitles.")
-            skipped += 1
+            results.append((titles.get(url, url), "Skipped: no subtitles selected", []))
             continue
         try:
             rc, files = downloaderVideo.downloader("best", url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir)
         except Exception as e:
             print(f"Video {i} failed: {e}")
             rc, files = 1, []
-        if rc == 0:
-            if files:
-                ok += 1
-                all_files += files
-            else:
-                unverified += 1
-        else:
-            failed += 1
-    _report_done(ok, failed, skipped, unverified, len(good))
-    return _ask_next(base_dir, all_files)
+        _record_result(results, titles.get(url, url), rc, files, subtitles_only=True)
+        if rc == 130:
+            break
+    return _ask_next(base_dir, _show_results(results))
 
 
 def _handle_subtitles_playlists():
@@ -351,8 +351,7 @@ def _handle_subtitles_playlists():
         scope = None
     base_dir = ask_base_dir()
     titles = {url: (info["title"] if info else url) for url, info in pl_infos}
-    ok, failed, skipped, unverified = 0, 0, 0, 0
-    all_files = []
+    results = []
     for i, (url, info) in enumerate(pl_infos, 1):
         print(f"--- Playlist {i}/{len(good)}: {titles.get(url, url)} ---")
         cur_mode, cur_args = sub_mode, sub_args
@@ -361,23 +360,17 @@ def _handle_subtitles_playlists():
             cur_mode, cur_args = plan_subs_only()
         if cur_mode == "none":
             print("Skipped: no subtitles.")
-            skipped += 1
+            results.append((titles.get(url, url), "Skipped: no subtitles selected", []))
             continue
         try:
             rc, files = downloaderPlaylist.downloader("best", url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=scope or downloaderPlaylist.plan_scope(info["count"] if info else None))
         except Exception as e:
             print(f"Playlist {i} failed: {e}")
             rc, files = 1, []
-        if rc == 0:
-            if files:
-                ok += 1
-                all_files += files
-            else:
-                unverified += 1
-        else:
-            failed += 1
-    _report_done(ok, failed, skipped, unverified, len(good))
-    return _ask_next(base_dir, all_files)
+        _record_result(results, titles.get(url, url), rc, files, subtitles_only=True)
+        if rc == 130:
+            break
+    return _ask_next(base_dir, _show_results(results))
 
 
 def main():
@@ -466,8 +459,7 @@ def main():
                 sub_mode, sub_args = "none", []
             base_dir = ask_base_dir()
             titles = {url: (info["title"] if info else url) for url, info in infos}
-            ok, failed, skipped = 0, 0, 0
-            all_files = []
+            results = []
             for i, url in enumerate(good, 1):
                 print(f"--- Video {i}/{len(good)}: {titles.get(url, url)} ---")
                 cur_ID = ID
@@ -490,7 +482,7 @@ def main():
                         if fallback_policy == "skip" or lower is None:
                             print(f"Skipped: {_picked}p unavailable"
                                   + (f" (best below it: {lower}p)." if lower else "."))
-                            skipped += 1
+                            results.append((titles.get(url, url), "Skipped: quality unavailable or declined", []))
                             continue
                         print(f"Picked: {_picked}p | Best below it: {lower}p")
                         print("1) Download lower for this video")
@@ -502,7 +494,7 @@ def main():
                                 break
                             print("Invalid selection. Try again")
                         if choice == "2":
-                            skipped += 1
+                            results.append((titles.get(url, url), "Skipped: quality unavailable or declined", []))
                             continue
                         if choice == "3":
                             fallback_policy = "auto"
@@ -511,16 +503,10 @@ def main():
                 except Exception as e:
                     print(f"Video {i} failed: {e}")
                     rc, files = 1, []
-                if rc == 0:
-                    ok += 1
-                    all_files += files
-                else:
-                    failed += 1
-            if skipped:
-                print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
-            else:
-                print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
-            last_base_dir, last_files = base_dir, all_files
+                _record_result(results, titles.get(url, url), rc, files)
+                if rc == 130:
+                    break
+            last_base_dir, last_files = base_dir, _show_results(results)
         elif content == "2":
             if _ask_count("playlists") == "one":
                 good, bad = _prompt_single_url("Enter playlist URL : ")
@@ -581,8 +567,7 @@ def main():
                 scope = None
             base_dir = ask_base_dir()
             titles = {url: (info["title"] if info else url) for url, info in pl_infos}
-            ok, failed, skipped = 0, 0, 0
-            all_files = []
+            results = []
             for i, (url, info) in enumerate(pl_infos, 1):
                 print(f"--- Playlist {i}/{len(good)}: {titles.get(url, url)} ---")
                 cur_ID = ID
@@ -598,16 +583,10 @@ def main():
                 except Exception as e:
                     print(f"Playlist {i} failed: {e}")
                     rc, files = 1, []
-                if rc == 0:
-                    ok += 1
-                    all_files += files
-                else:
-                    failed += 1
-            if skipped:
-                print(f"Done: {ok} ok, {failed} failed, {skipped} skipped out of {len(good)}")
-            else:
-                print(f"Done: {ok} ok, {failed} failed out of {len(good)}")
-            last_base_dir, last_files = base_dir, all_files
+                _record_result(results, titles.get(url, url), rc, files)
+                if rc == 130:
+                    break
+            last_base_dir, last_files = base_dir, _show_results(results)
         else:
             print("Not a valid content selection. Try Again")
             continue

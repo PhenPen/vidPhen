@@ -23,11 +23,11 @@ def _download_with_template(ID, url, extra_args, audio_extra=None, sub_mode="non
 def _scope_to_args(scope):
     """Scope tuple -> yt-dlp playlist args. Scope: ('E',) | ('R', b, e) | ('S', items)."""
     if scope[0] == "E":
-        return ["--ignore-errors", "--no-overwrites", "--windows-filenames"]
+        return ["--no-abort-on-error", "--no-overwrites", "--windows-filenames"]
     elif scope[0] == "R":
-        return ["--ignore-errors", "--playlist-start", str(scope[1]), "--playlist-end", str(scope[2]), "--no-overwrites", "--windows-filenames"]
+        return ["--no-abort-on-error", "--playlist-start", str(scope[1]), "--playlist-end", str(scope[2]), "--no-overwrites", "--windows-filenames"]
     else:
-        return ["--ignore-errors", "--playlist-items", scope[1], "--no-overwrites", "--windows-filenames"]
+        return ["--no-abort-on-error", "--playlist-items", scope[1], "--no-overwrites", "--windows-filenames"]
 
 
 def plan_scope(count=None):

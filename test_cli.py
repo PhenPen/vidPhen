@@ -74,7 +74,7 @@ class SubtitleTests(unittest.TestCase):
         args = download.call_args.args[0]
         self.assertIn("--skip-download", args)
         self.assertIn("--write-automatic-subs", args)
-        self.assertIn("--ignore-errors", args)
+        self.assertIn("--no-abort-on-error", args)
         self.assertNotIn("-f", args)
 
 
@@ -96,3 +96,27 @@ class FormatTests(unittest.TestCase):
         self.assertIsNotNone(args)
         self.assertTrue(all("height<=1080" in choice for choice in args[1].split("/")))
         self.assertIsNone(runner._without_merges(["-f", "247+250"]))
+
+
+class ResultTests(unittest.TestCase):
+    def test_partial_playlist_keeps_files_and_empty_success_is_visible(self):
+        results = []
+        cli._record_result(results, "Playlist", 1, ["first.mp4"])
+        cli._record_result(results, "Missing captions", 0, [], subtitles_only=True)
+        with redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(cli._show_results(results), ["first.mp4"])
+        self.assertIn("Partial download (1 files) - Playlist", output.getvalue())
+        self.assertIn("No subtitle file found - Missing captions", output.getvalue())
+
+    def test_only_explicit_paths_count_as_results(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from vidphen.downloadSelect import runner
+
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "video.es.vtt"
+            path.touch()
+            metadata = json.dumps({"es": {"filepath": str(path)}})
+            self.assertEqual(runner._collect_file_line(f"VIDPHEN_SUBS:{metadata}"), [str(path.resolve())])
+            self.assertEqual(runner._collect_file_line(str(path)), [])
