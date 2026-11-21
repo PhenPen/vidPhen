@@ -95,11 +95,13 @@ What do you want to do?
 
 ## Configuration
 
-Stored at `~/.config/phenTube/config.json`:
+Stored at `~/.config/vidphen/config.json`:
 
 ```json
 { "download_dir": "C:/Users/You/Downloads" }
 ```
+
+Existing `~/.config/phenTube/config.json` settings carry over if the new file does not exist.
 
 Old Windows `AppData/Roaming/yt-dlp/config.txt` installs are migrated automatically. To reset, use `Settings → Change default download folder`. Per run you can still pick `Save Default (D) or Custom once (C)`.
 

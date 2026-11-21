@@ -285,3 +285,23 @@ class SubtitleAvailabilityTests(unittest.TestCase):
             self.assertTrue(cli._check_playlist_subtitles({"entries": entries}, ("R", 1, 3), args))
         self.assertEqual({call.args[0] for call in lookup.call_args_list}, {"1", "2", "3"})
         self.assertIn("1 available, 1 unavailable, 1 unverified", output.getvalue())
+
+
+class ConfigMigrationTests(unittest.TestCase):
+    def test_migrates_existing_settings_once(self):
+        import json
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from vidphen.configSelect import config
+
+        with TemporaryDirectory() as folder, patch.object(Path, "home", return_value=Path(folder)):
+            old = Path(folder) / ".config" / "phenTube" / "config.json"
+            old.parent.mkdir(parents=True)
+            old.write_text('{"download_dir": "/old", "extra": true}', encoding="utf-8")
+            self.assertEqual(config._load_config(), "/old")
+            new = config.get_config_path()
+            self.assertEqual(new.parent.name, "vidphen")
+            self.assertEqual(json.loads(new.read_text(encoding="utf-8")), {"download_dir": "/old", "extra": True})
+            new.write_text('{"download_dir": "/new"}', encoding="utf-8")
+            self.assertEqual(config._load_config(), "/new")
+            self.assertEqual(json.loads(old.read_text(encoding="utf-8"))["download_dir"], "/old")

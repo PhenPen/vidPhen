@@ -6,7 +6,7 @@ from vidphen.contentSelect.ui import prompt
 
 def get_config_path():
     """Cross-platform config file location."""
-    return Path.home() / ".config" / "phenTube" / "config.json"
+    return Path.home() / ".config" / "vidphen" / "config.json"
 
 
 def _legacy_config_paths():
@@ -35,16 +35,35 @@ def _read_legacy_path(filepath):
     return None
 
 
+def _read_json_config(filepath):
+    try:
+        with filepath.open(encoding="utf-8") as file:
+            data = json.load(file)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def _load_config():
     filepath = get_config_path()
     if filepath.exists():
-        try:
-            with open(filepath, mode="r", encoding="utf-8") as file:
-                data = json.load(file)
-                if isinstance(data, dict) and data.get("download_dir"):
-                    return data["download_dir"]
-        except (OSError, ValueError):
-            pass
+        data = _read_json_config(filepath)
+    else:
+        old_path = filepath.parent.parent / "phenTube" / "config.json"
+        data = _read_json_config(old_path)
+        if data:
+            try:
+                filepath.parent.mkdir(parents=True, exist_ok=True)
+                with filepath.open("x", encoding="utf-8") as file:
+                    json.dump(data, file, indent=2)
+            except FileExistsError:
+                data = _read_json_config(filepath)
+            except OSError:
+                # Continue with the old settings if the new directory is unwritable.
+                pass
+    download_dir = data.get("download_dir")
+    if isinstance(download_dir, str) and download_dir:
+        return download_dir
     # Migrate legacy config if present
     for legacy in _legacy_config_paths():
         if legacy.exists():
