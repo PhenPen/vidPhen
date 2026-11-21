@@ -84,6 +84,13 @@ def plan_subs(url=None, allow_only=True):
     menu is used.
     """
     from vidphen.contentSelect.ui import close_section, prompt
+    if url is not None:
+        subs = get_sub_langs(url)
+        if subtitle_availability(subs) is False:
+            print("No subtitles available.")
+            return ("none", [])
+        if subs["unknown"]:
+            print("Couldn't check subtitles.")
     show_subs_mode_menu(allow_only=allow_only)
     valid = ("2", "3") if allow_only else ("2",)
     prompt_text = "Pick 1-3 : " if allow_only else "Pick 1-2 : "
@@ -193,9 +200,32 @@ def _flags_for(keys, needs_auto):
 def get_sub_langs(url):
     """One lookup: {manual:[codes], auto:[codes], unknown:bool}. Cached per URL."""
     info = inspect_video(url)
+    return subtitle_languages(info)
+
+
+def subtitle_languages(info):
     if info is None:
         return {"manual": [], "auto": [], "unknown": True}
     return {"manual": info["subtitles"], "auto": info["automatic_captions"], "unknown": False}
+
+
+def subtitle_availability(subs, args=None):
+    """Return True, False, or None when availability cannot be verified."""
+    if subs["unknown"]:
+        return None
+    manual = subs["manual"]
+    auto = subs["auto"] if args is None or "--write-automatic-subs" in args else []
+    available = {lang.lower() for lang in manual + auto}
+    if not args or "--sub-langs" not in args:
+        return bool(available)
+    import re
+    requested = args[args.index("--sub-langs") + 1].lower().split(",")
+    if any(not re.fullmatch(r"[a-z0-9_-]+", lang) for lang in requested):
+        # Advanced yt-dlp selectors are resolved by the downloader itself.
+        return None
+    if any(lang.startswith("-") for lang in requested):
+        return None
+    return bool(available and ("all" in requested or available.intersection(requested)))
 
 
 def build_lang_options(subs):
@@ -246,9 +276,10 @@ def _pick_language_dynamic(url):
     from vidphen.contentSelect.ui import close_section, prompt
     subs = get_sub_langs(url)
     if subs.get("unknown"):
+        print("Couldn't check subtitles. You can still choose a language to try.")
         return ("static", [])
     if not subs.get("manual") and not subs.get("auto"):
-        print("This video has no subtitles in any language. Continuing without.")
+        print("No subtitles available.")
         return ("skip", [])
     while True:
         entries, note = build_lang_options(subs)

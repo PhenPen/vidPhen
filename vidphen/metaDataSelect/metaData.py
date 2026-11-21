@@ -54,7 +54,7 @@ def inspect_video(url):
             for fmt in (data.get("formats") or [data]) if isinstance(fmt, dict)
         ],
         "subtitles": sorted(data.get("subtitles") or {}),
-        "automatic_captions": sorted(data.get("automatic_captions") or {}),
+        "automatic_captions": sorted(set(data.get("automatic_captions") or {}) - {"live_chat"}),
     }
 
 

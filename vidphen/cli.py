@@ -5,7 +5,9 @@ from vidphen.contentSelect.validators import is_valid_url, parse_url_list, youtu
 from vidphen.downloadSelect import downloaderVideo,downloaderPlaylist
 from vidphen.downloadSelect.runner import ask_base_dir
 from vidphen.metaDataSelect.metaData import fetch, fetch_playlist, format_duration
-from vidphen.subtitleSelect.sub_langs import plan_subs, plan_subs_only
+from vidphen.subtitleSelect.sub_langs import (
+    get_sub_langs, plan_subs, plan_subs_only, subtitle_availability, subtitle_languages,
+)
 
 
 
@@ -270,111 +272,144 @@ def _settings_menu():
             close_section()
 
 
-def _handle_subtitles_videos():
-    """Subtitles-only flow for videos. No quality prompt. Returns False to quit app."""
-    infos = _collect_previews("video")
-    if not infos:
-        return True
-    good = [url for url, _ in infos]
+def _confirm_subtitle_download(total):
     while True:
-        batch_choice = ui.prompt(f"Download subtitles for these {len(good)} video(s)? (y/n) : ").upper()
-        if batch_choice in ("Y", "N"):
-            break
-        print("Invalid Selection. Try again")
-    if batch_choice == "N":
-        print("Cancelled.")
-        return True
-    if len(good) > 1 and _customize_batch():
-        subs_scope = _ask_scope("Subtitles")
-    else:
-        subs_scope = "all"
-    if subs_scope == "all":
-        sub_mode, sub_args = plan_subs_only(good[0] if len(good) == 1 else None)
-    else:
-        sub_mode, sub_args = "none", []
-    if sub_mode == "none" and subs_scope == "all":
-        print("Continuing without subtitles.")
-        return True
-    base_dir = ask_base_dir()
-    titles = {url: (info["title"] if info else url) for url, info in infos}
+        choice = ui.prompt(f"Download subtitles for {total} item(s)? (y/n) : ").strip().upper()
+        if choice in ("Y", "N"):
+            return choice == "Y"
+        print("Enter Y or N.")
+
+
+def _handle_subtitles_videos():
+    previews = _collect_previews("video")
+    eligible = []
     results = []
-    for i, url in enumerate(good, 1):
-        print(f"--- Subtitles {i}/{len(good)}: {titles.get(url, url)} ---")
-        cur_mode, cur_args = sub_mode, sub_args
-        if subs_scope == "per":
-            print(f"Subtitles for video {i}/{len(good)}:")
-            cur_mode, cur_args = plan_subs_only(url)
-        if cur_mode == "none":
-            print("Skipped: no subtitles.")
-            results.append((titles.get(url, url), "Skipped: no subtitles selected", []))
-            continue
-        try:
-            rc, files = downloaderVideo.downloader("best", url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir)
-        except ui.BackToMenu:
-            raise
-        except Exception as e:
-            print(f"Video {i} failed: {e}")
-            rc, files = 1, []
-        _record_result(results, titles.get(url, url), rc, files, subtitles_only=True)
-        if rc == 130:
-            break
-    return _ask_next(base_dir, _show_results(results))
+    for url, info in previews:
+        title = info["title"] if info else url
+        status = subtitle_availability(subtitle_languages(info))
+        if status is False:
+            print(f"No subtitles available: {title}")
+            results.append((title, "Skipped: no subtitles available", []))
+        else:
+            if status is None:
+                print(f"Couldn't check subtitles: {title}")
+            eligible.append((url, title, info))
+    if not eligible:
+        return True
+
+    customize = len(eligible) > 1 and _customize_batch()
+    per_video = customize and _ask_scope("Subtitles") == "per"
+    if not per_video:
+        url = eligible[0][0] if len(eligible) == 1 else None
+        shared_mode, shared_args = plan_subs_only(url)
+
+    planned = []
+    for url, title, info in eligible:
+        mode, args = plan_subs_only(url) if per_video else (shared_mode, shared_args)
+        status = subtitle_availability(subtitle_languages(info), args)
+        if mode == "none":
+            results.append((title, "Skipped: no subtitles selected", []))
+        elif status is False:
+            print(f"No subtitles in the selected language: {title}")
+            results.append((title, "Skipped: selected subtitles unavailable", []))
+        else:
+            planned.append((url, title, mode, args))
+    if not planned or not _confirm_subtitle_download(len(planned)):
+        return True
+    return _run_subtitle_downloads(planned, results)
+
+
+def _selected_playlist_entries(info, scope):
+    if info is None:
+        return []
+    entries = info.get("entries", [])
+    if scope[0] == "R":
+        start, end = scope[1:]
+        return [entry for entry in entries if start <= entry["index"] <= end]
+    if scope[0] == "S":
+        selected = {int(position) for position in scope[1].split(",")}
+        return [entry for entry in entries if entry["index"] in selected]
+    return entries
+
+
+def _check_playlist_subtitles(info, scope, args):
+    entries = _selected_playlist_entries(info, scope)
+    if not entries:
+        print("Couldn't check subtitles for the selected playlist entries.")
+        return None
+    print(f"Checking subtitles for {len(entries)} selected entries…")
+    executor = ThreadPoolExecutor(max_workers=3)
+    try:
+        urls = dict.fromkeys(entry["url"] for entry in entries if entry["url"])
+        futures = {url: executor.submit(get_sub_langs, url) for url in urls}
+        statuses = [
+            subtitle_availability(futures[entry["url"]].result(), args) if entry["url"] else None
+            for entry in entries
+        ]
+    except KeyboardInterrupt:
+        print("\nSubtitle check cancelled.")
+        raise ui.BackToMenu from None
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+    available = statuses.count(True)
+    unavailable = statuses.count(False)
+    unknown = statuses.count(None)
+    print(f"Selected subtitles: {available} available, {unavailable} unavailable, {unknown} unverified.")
+    if available:
+        return True
+    if unknown:
+        return None
+    print("No subtitles available in the selected language.")
+    return False
 
 
 def _handle_subtitles_playlists():
-    """Subtitles-only flow for playlists. No quality prompt. Returns False to quit app."""
-    pl_infos = _collect_previews("playlist")
-    if not pl_infos:
+    previews = _collect_previews("playlist")
+    if not previews:
         return True
-    good = [url for url, _ in pl_infos]
-    while True:
-        batch_choice = ui.prompt(f"Download subtitles for these {len(good)} playlist(s)? (y/n) : ").upper()
-        if batch_choice in ("Y", "N"):
-            break
-        print("Invalid Selection. Try again")
-    if batch_choice == "N":
-        print("Cancelled.")
-        return True
-    if len(good) > 1 and _customize_batch():
-        subs_scope = _ask_scope("Subtitles")
-        range_scope = _ask_scope("Video range")
-    else:
-        subs_scope = "all"
-        range_scope = "per" if len(good) == 1 else "all"
-    if subs_scope == "all":
-        sub_mode, sub_args = plan_subs_only()
-    else:
-        sub_mode, sub_args = "none", []
-    if sub_mode == "none" and subs_scope == "all":
-        print("Continuing without subtitles.")
-        return True
-    if range_scope == "all":
-        from vidphen.downloadSelect.downloaderPlaylist import plan_scope
-        scope = plan_scope()
-    else:
-        scope = None
-    base_dir = ask_base_dir()
-    titles = {url: (info["title"] if info else url) for url, info in pl_infos}
-    results = []
-    for i, (url, info) in enumerate(pl_infos, 1):
-        print(f"--- Playlist {i}/{len(good)}: {titles.get(url, url)} ---")
-        cur_mode, cur_args = sub_mode, sub_args
-        if subs_scope == "per":
-            print(f"Subtitles for playlist {i}/{len(good)}:")
-            cur_mode, cur_args = plan_subs_only()
-        if cur_mode == "none":
-            print("Skipped: no subtitles.")
-            results.append((titles.get(url, url), "Skipped: no subtitles selected", []))
+    customize = len(previews) > 1 and _customize_batch()
+    per_playlist = customize and _ask_scope("Subtitles") == "per"
+    per_range = _ask_scope("Video range") == "per" if customize else len(previews) == 1
+    if not per_playlist:
+        shared_mode, shared_args = plan_subs_only()
+    shared_scope = None if per_range else downloaderPlaylist.plan_scope()
+    planned, results = [], []
+    for url, info in previews:
+        title = info["title"] if info else url
+        print(title)
+        mode, args = plan_subs_only() if per_playlist else (shared_mode, shared_args)
+        if mode == "none":
+            results.append((title, "Skipped: no subtitles selected", []))
             continue
-        selection = scope or downloaderPlaylist.plan_scope(info["count"] if info else None)
+        scope = shared_scope or downloaderPlaylist.plan_scope(info["count"] if info else None)
+        if _check_playlist_subtitles(info, scope, args) is False:
+            results.append((title, "Skipped: selected subtitles unavailable", []))
+            continue
+        planned.append((url, title, mode, args, scope))
+    if not planned or not _confirm_subtitle_download(len(planned)):
+        return True
+    return _run_subtitle_downloads(planned, results)
+
+
+def _run_subtitle_downloads(planned, results):
+    base_dir = ask_base_dir()
+    for url, title, mode, args, *scope in planned:
+        print(f"--- Subtitles: {title} ---")
         try:
-            rc, files = downloaderPlaylist.downloader("best", url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=selection)
+            if scope:
+                rc, files = downloaderPlaylist.downloader(
+                    "best", url, sub_mode=mode, sub_args=args, base_dir=base_dir, scope=scope[0],
+                )
+            else:
+                rc, files = downloaderVideo.downloader(
+                    "best", url, sub_mode=mode, sub_args=args, base_dir=base_dir,
+                )
         except ui.BackToMenu:
             raise
-        except Exception as e:
-            print(f"Playlist {i} failed: {e}")
+        except Exception as error:
+            print(f"Subtitle download failed: {error}")
             rc, files = 1, []
-        _record_result(results, titles.get(url, url), rc, files, subtitles_only=True)
+        _record_result(results, title, rc, files, subtitles_only=True)
         if rc == 130:
             break
     return _ask_next(base_dir, _show_results(results))
@@ -445,13 +480,18 @@ def main():
                     ID = None
                     fallback_policy = "auto"
                 if subs_scope == "all":
-                    sub_mode, sub_args = plan_subs(good[0] if len(good) == 1 else None, allow_only=False)
+                    availability = [subtitle_availability(subtitle_languages(info)) for _, info in infos]
+                    if all(status is False for status in availability):
+                        print("No subtitles available.")
+                        sub_mode, sub_args = "none", []
+                    else:
+                        sub_mode, sub_args = plan_subs(good[0] if len(good) == 1 else None, allow_only=False)
                 else:
                     sub_mode, sub_args = "none", []
                 base_dir = ask_base_dir()
                 titles = {url: (info["title"] if info else url) for url, info in infos}
                 results = []
-                for i, url in enumerate(good, 1):
+                for i, (url, info) in enumerate(infos, 1):
                     print(f"--- Video {i}/{len(good)}: {titles.get(url, url)} ---")
                     cur_ID = ID
                     if quality_scope == "per":
@@ -461,6 +501,9 @@ def main():
                     if subs_scope == "per":
                         print(f"Subtitles for video {i}/{len(good)}:")
                         cur_mode, cur_args = plan_subs(url, allow_only=False)
+                    if cur_mode == "with" and subtitle_availability(subtitle_languages(info), cur_args) is False:
+                        print("Selected subtitles unavailable. Downloading the video only.")
+                        cur_mode, cur_args = "none", []
                     from vidphen.contentSelect.quality import get_available, picked_height
                     _fmt = cur_ID[0] if isinstance(cur_ID, tuple) else cur_ID
                     _picked = picked_height(_fmt)
@@ -547,6 +590,9 @@ def main():
                         print(f"Subtitles for playlist {i}/{len(good)}:")
                         cur_mode, cur_args = plan_subs(allow_only=False)
                     selection = scope or downloaderPlaylist.plan_scope(info["count"] if info else None)
+                    if cur_mode == "with" and _check_playlist_subtitles(info, selection, cur_args) is False:
+                        print("Downloading the playlist without subtitles.")
+                        cur_mode, cur_args = "none", []
                     try:
                         rc, files = downloaderPlaylist.downloader(cur_ID, url, sub_mode=cur_mode, sub_args=cur_args, base_dir=base_dir, scope=selection)
                     except ui.BackToMenu:

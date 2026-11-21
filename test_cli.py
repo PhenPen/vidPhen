@@ -189,7 +189,7 @@ class BatchedMenuTests(unittest.TestCase):
 
     def test_subtitle_batch_reports_files_and_missing_language(self):
         urls = [f"https://example.com/{kind}" for kind in ("manual", "auto", "missing")]
-        inputs = ["3", "1", *urls, "", "y", "", "4"]
+        inputs = ["3", "1", *urls, "", "", "y", "4"]
         output = io.StringIO()
         with patch("builtins.input", side_effect=inputs), redirect_stdout(output), \
                 patch.object(cli, "fetch", return_value=None), \
@@ -262,3 +262,26 @@ class BackgroundPreviewTests(unittest.TestCase):
             previews = cli._collect_previews("video")
         self.assertEqual([url for url, _ in previews], ["https://example.com/one", "https://example.com/two"])
         self.assertEqual(inspect.call_count, 2)
+
+
+class SubtitleAvailabilityTests(unittest.TestCase):
+    def test_known_missing_subtitles_do_not_ask_to_download(self):
+        video = {"title": "Silent clip", "subtitles": [], "automatic_captions": []}
+        with patch.object(cli, "_collect_previews", return_value=[("https://example.com/silent", video)]), \
+                patch.object(cli.ui, "prompt") as prompt, redirect_stdout(io.StringIO()) as output:
+            self.assertTrue(cli._handle_subtitles_videos())
+        prompt.assert_not_called()
+        self.assertIn("No subtitles available: Silent clip", output.getvalue())
+
+    def test_playlist_checks_only_selected_entries_and_reports_unknowns(self):
+        entries = [{"index": i, "url": str(i)} for i in range(1, 5)]
+        subtitles = {
+            "1": {"manual": [], "auto": [], "unknown": False},
+            "2": {"manual": [], "auto": ["es"], "unknown": False},
+            "3": {"manual": [], "auto": [], "unknown": True},
+        }
+        args = ["--sub-langs", "es", "--write-automatic-subs"]
+        with patch.object(cli, "get_sub_langs", side_effect=subtitles.__getitem__) as lookup, redirect_stdout(io.StringIO()) as output:
+            self.assertTrue(cli._check_playlist_subtitles({"entries": entries}, ("R", 1, 3), args))
+        self.assertEqual({call.args[0] for call in lookup.call_args_list}, {"1", "2", "3"})
+        self.assertIn("1 available, 1 unavailable, 1 unverified", output.getvalue())
