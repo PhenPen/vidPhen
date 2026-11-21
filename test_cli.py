@@ -25,3 +25,15 @@ class LinkIntentTests(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             self.assertEqual(cli._filter_link_kind([playlist, video], "video"), [video])
             self.assertEqual(cli._filter_link_kind([video, playlist], "playlist"), [playlist])
+
+
+class BatchLinkTests(unittest.TestCase):
+    def test_pasted_links_preserve_url_punctuation_and_report_duplicates(self):
+        url = "https://example.com/watch?tags=a,b;c"
+        lines = [f"{url},https://example.org/video", f"{url}, invalid", ""]
+        output = io.StringIO()
+        with patch.object(cli.ui, "prompt", side_effect=lines), redirect_stdout(output):
+            good, bad = cli._prompt_url_list("Paste links")
+        self.assertEqual(good, [url, "https://example.org/video"])
+        self.assertEqual(bad, ["invalid"])
+        self.assertIn("Skipped duplicate link:", output.getvalue())

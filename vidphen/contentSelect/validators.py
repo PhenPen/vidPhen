@@ -84,19 +84,23 @@ def parse_range(range_str):
         return None
 
 
-def parse_url_list(text):
-    """Split pasted text on commas/whitespace/newlines. Returns (good, bad)."""
-    import re as _re
+def parse_url_list(text, duplicates=None):
+    """Split pasted text on whitespace and common list delimiters. Returns (good, bad)."""
     if not text or not isinstance(text, str):
         return ([], [])
     # Drop stray control characters (eg Ctrl+X) so odd keys become
     # skippable text instead of crashing downstream.
     text = "".join(ch for ch in text if ch >= " " or ch in "\n\t")
-    raw = [p.strip().strip('"').strip("'") for p in _re.split(r"[\s,;]+", text)]
+    # Keep punctuation inside a URL unless it separates whitespace-delimited
+    # items or introduces another explicit URL.
+    parts = re.split(r"\s+|[,;]+(?=\s|https?://|$)", text, flags=re.IGNORECASE)
+    raw = [p.strip().strip('"').strip("'") for p in parts]
     raw = [p for p in raw if p]
     good, bad, seen = [], [], set()
     for item in raw:
         if item in seen:
+            if duplicates is not None and is_valid_url(item):
+                duplicates.append(item)
             continue
         seen.add(item)
         if is_valid_url(item):

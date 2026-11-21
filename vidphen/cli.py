@@ -17,7 +17,11 @@ def _prompt_url_list(prompt_text):
         if not line.strip():
             break
         lines.append(line)
-    return parse_url_list("\n".join(lines))
+    duplicates = []
+    good, bad = parse_url_list("\n".join(lines), duplicates=duplicates)
+    for url in duplicates:
+        print(f"Skipped duplicate link: {url}")
+    return good, bad
 
 
 def _ask_count(what):
